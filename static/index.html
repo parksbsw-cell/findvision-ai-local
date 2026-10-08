@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>FindVision AI Local</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main>
+    <header><span class="badge">LOCAL AI</span><h1>FindVision AI</h1>
+      <p>실종 재난문자의 인상착의를 분석해 로컬 AI로 전신 참고 이미지를 생성합니다.</p></header>
+    <section class="notice">생성 이미지는 실제 얼굴 복원이나 신원 확인 결과가 아닌 인상착의 참고 자료입니다.</section>
+    <section class="card">
+      <label for="message">실종 재난문자 원문</label>
+      <textarea id="message" maxlength="1800" placeholder="실종 재난문자를 그대로 붙여 넣으세요."></textarea>
+      <div class="actions"><button id="analyze">1단계 · 내용 분석</button><button id="generate" disabled>2단계 · 이미지 생성</button></div>
+      <p id="status" role="status"></p>
+    </section>
+    <section class="card hidden" id="analysis"><h2>확인된 인상착의</h2><div id="facts"></div></section>
+    <section class="card hidden" id="result"><h2>재난문자 이미지 알림</h2><blockquote id="original"></blockquote>
+      <img id="image" alt="AI가 생성한 전신 참고 이미지"><p id="verification"></p></section>
+  </main>
+  <dialog id="popup"><h2>📱 실종 재난문자 이미지 알림</h2><p id="popup-message"></p><img id="popup-image" alt="AI 참고 이미지"><button id="close-popup">확인</button></dialog>
+  <script src="/static/app.js"></script>
+</body>
+</html>
+
