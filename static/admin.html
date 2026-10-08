@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>FindVision AI 통계</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main>
+    <header><span class="badge">ADMIN</span><h1>사용 통계</h1>
+      <p>개인정보와 재난문자 원문을 저장하지 않는 익명 집계입니다.</p></header>
+    <section class="card">
+      <label for="token">관리자 토큰</label>
+      <input id="token" type="password" autocomplete="current-password" placeholder="FINDVISION_ADMIN_TOKEN">
+      <div class="actions"><button id="load">통계 불러오기</button></div>
+      <p id="status" role="status"></p>
+    </section>
+    <section class="stats hidden" id="stats" aria-live="polite"></section>
+    <p><a href="/">← 이미지 생성 화면</a></p>
+  </main>
+  <script src="/static/admin.js"></script>
+</body>
+</html>

@@ -53,6 +53,11 @@ def index(response: Response, fv_visitor: str | None = Cookie(default=None)):
     return FileResponse("static/index.html")
 
 
+@app.get("/admin")
+def admin_page():
+    return FileResponse("static/admin.html")
+
+
 @app.post("/api/analyze", response_model=AnalyzeResponse)
 def analyze(request: AnalyzeRequest):
     appearance, warnings = parse_message(request.message)

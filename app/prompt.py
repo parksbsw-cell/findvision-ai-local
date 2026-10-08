@@ -1,7 +1,45 @@
 from .schemas import Appearance
 
 TRANSLATIONS = {
-    "고무신": "traditional Korean rubber shoes",
+    "겉 셔츠 모든 단추를 풀어 입음": "outer shirt fully unbuttoned and open",
+    "오른손에": "in right hand",
+    "왼손에": "in left hand",
+    "양손에": "in both hands",
+    "보행용": "walking",
+    "검은색": "black",
+    "검정색": "black",
+    "흰색": "white",
+    "하얀색": "white",
+    "회색": "gray",
+    "갈색": "brown",
+    "남색": "navy",
+    "파란색": "blue",
+    "빨간색": "red",
+    "초록색": "green",
+    "노란색": "yellow",
+    "분홍색": "pink",
+    "보라색": "purple",
+    "베이지색": "beige",
+    "남성": "Korean man",
+    "남자": "Korean man",
+    "여성": "Korean woman",
+    "여자": "Korean woman",
+    "마른 편": "slim build",
+    "통통한 편": "stocky build",
+    "보통 체형": "average build",
+    "고도 비만": "very heavy build",
+    "비만": "heavy build",
+    "저체중": "underweight build",
+    "얇은": "thin",
+    " 위에 ": " over ",
+    "짧은 머리": "short hair",
+    "긴 머리": "long hair",
+    "머리카락": "hair",
+    "머리": "hair",
+    "학교": "school",
+    "반팔 셔츠": "short-sleeve button-up shirt",
+    "긴팔 셔츠": "long-sleeve button-up shirt",
+    "고무신": "Korean rubber slip-on shoes",
     "지팡이": "walking cane",
     "반팔티": "short-sleeve T-shirt",
     "긴팔티": "long-sleeve T-shirt",
@@ -33,12 +71,9 @@ def visual_requirements(a: Appearance) -> list[str]:
 def image_prompt(a: Appearance, correction: str = "") -> str:
     requirements = visual_requirements(a)
     prompt = (
-        "Documentary full-body reference photograph of one person standing naturally, "
-        "plain light-gray studio background, Korean public safety reference style, neutral pose, "
-        "realistic anatomy, both hands and both feet fully visible. The person's face is generic "
-        "and must not resemble a real named person. Explicit appearance: "
+        "Full-body photo, hands and feet visible. Required: "
         + "; ".join(requirements)
-        + ". Do not add unstated clothing, accessories, logos, text, watermark, or props."
+        + ". Plain gray background."
     )
     if correction:
         prompt += " Correct the previous image: " + correction
@@ -48,8 +83,9 @@ def image_prompt(a: Appearance, correction: str = "") -> str:
 def verification_prompt(a: Appearance) -> str:
     return (
         "You are checking an AI-generated missing-person appearance reference image. "
-        "Compare only the explicit requirements below. Do not infer identity. Return strict JSON "
+        "Compare only the explicit requirements below. Do not infer identity. No reasoning. Return JSON "
         "with passed(boolean), score(0-100), missing(array), wrong(array), feedback(string). "
-        "Requirements: " + "; ".join(visual_requirements(a))
+        "Mark any extra visible accessory as wrong. Requirements: "
+        + "; ".join(visual_requirements(a))
     )
 

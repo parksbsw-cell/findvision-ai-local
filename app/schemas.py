@@ -34,11 +34,26 @@ class GenerateRequest(AnalyzeRequest):
 
 
 class Verification(BaseModel):
-    passed: bool
-    score: int = Field(ge=0, le=100)
-    missing: list[str] = Field(default_factory=list)
-    wrong: list[str] = Field(default_factory=list)
-    feedback: str = ""
+    passed: bool = Field(description="True only when every required visual detail matches")
+    score: int = Field(ge=0, le=100, description="Overall match percentage")
+    missing: list[str] = Field(
+        default_factory=list, description="Required details absent from the image"
+    )
+    wrong: list[str] = Field(
+        default_factory=list,
+        description="Only mismatched or extra visible details; never include correct details",
+    )
+    feedback: str = Field(default="", description="Short actionable correction")
+
+
+class VisualCheck(BaseModel):
+    requirement: str
+    matches: bool
+    observation: str
+
+
+class GroupAudit(BaseModel):
+    checks: list[VisualCheck]
 
 
 class GenerateResponse(BaseModel):

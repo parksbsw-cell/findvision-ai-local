@@ -17,6 +17,7 @@ class LocalImageGenerator:
 
         pipe = DiffusionPipeline.from_pretrained(
             self.model_id,
+            variant="fp16",
             torch_dtype=torch.float16,
             use_safetensors=True,
         )

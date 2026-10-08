@@ -8,8 +8,22 @@ def test_prompt_keeps_rubber_shoes_and_cane():
         accessories=["오른손에 갈색 지팡이"],
     )
     requirements = visual_requirements(appearance)
-    assert any("traditional Korean rubber shoes" in item for item in requirements)
+    assert any("Korean rubber slip-on shoes" in item for item in requirements)
     assert any("walking cane" in item for item in requirements)
     prompt = image_prompt(appearance)
-    assert "Do not add unstated" in prompt
+    assert "hands and feet visible" in prompt
+
+
+def test_prompt_translates_critical_korean_terms_and_stays_compact():
+    appearance = Appearance(
+        gender="남성", age="17", body_type="마른 편",
+        top="검은색 얇은 반팔티 위에 흰색 학교 반팔 셔츠 (겉 셔츠 모든 단추를 풀어 입음)",
+        bottom="검은색 반바지", shoes="검은색 고무신",
+        accessories=["오른손에 갈색 지팡이"],
+    )
+    prompt = image_prompt(appearance)
+    assert "Korean man" in prompt
+    assert "outer shirt fully unbuttoned" in prompt
+    assert "in right hand brown walking cane" in prompt
+    assert not any("가" <= char <= "힣" for char in prompt)
 

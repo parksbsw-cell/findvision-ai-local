@@ -15,7 +15,7 @@ def test_analyze_api_handler():
 
 def test_required_routes_are_registered():
     paths = {route.path for route in app.routes}
-    assert {"/", "/api/analyze", "/api/generate", "/api/admin/stats", "/health"} <= paths
+    assert {"/", "/admin", "/api/analyze", "/api/generate", "/api/admin/stats", "/health"} <= paths
 
 
 def test_admin_stats_are_hidden_without_configured_secret():

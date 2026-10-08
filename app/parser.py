@@ -4,7 +4,7 @@ from .schemas import Appearance
 
 COLORS = r"검은색|검정색|흰색|하얀색|회색|갈색|남색|파란색|빨간색|초록색|노란색|분홍색|보라색|베이지색"
 SHOES = r"고무신|크록스|운동화|슬리퍼|샌들|구두|단화|부츠|장화|신발"
-TOPS = r"반팔티|긴팔티|티셔츠|셔츠|남방|니트|맨투맨|후드티|조끼"
+TOPS = r"반팔[ ]*셔츠|긴팔[ ]*셔츠|반팔티|긴팔티|티셔츠|셔츠|남방|니트|맨투맨|후드티|조끼"
 OUTER = r"자켓|재킷|점퍼|코트|패딩|바람막이|후드집업|외투|겉옷|작업복"
 BOTTOMS = r"반바지|긴바지|청바지|면바지|슬랙스|치마|치마바지|바지"
 
@@ -15,7 +15,22 @@ def _first(pattern: str, text: str, group: int = 1) -> str:
 
 
 def _garment(text: str, kinds: str) -> str:
-    return _first(rf"((?:{COLORS})?\s*(?:얇은\s*|두꺼운\s*)?(?:{kinds}))", text)
+    return _first(
+        rf"((?:{COLORS})?\s*(?:얇은\s*|두꺼운\s*)?(?:학교\s*)?(?:{kinds}))", text
+    )
+
+
+def _tops(text: str) -> str:
+    pattern = rf"((?:{COLORS})?\s*(?:얇은\s*|두꺼운\s*)?(?:학교\s*)?(?:{TOPS}))"
+    found = []
+    for value in re.findall(pattern, text):
+        value = re.sub(r"\s+", " ", value).strip()
+        if value and value not in found:
+            found.append(value)
+    result = " 위에 ".join(found)
+    if len(found) > 1 and re.search(r"모든\s*단추(?:를)?\s*풀|단추\s*전체\s*오픈", text):
+        result += " (겉 셔츠 모든 단추를 풀어 입음)"
+    return result
 
 
 def is_missing_alert(text: str) -> bool:
@@ -42,6 +57,7 @@ def parse_message(text: str) -> tuple[Appearance, list[str]]:
     hair_parts = []
     for pattern in (
         rf"((?:{COLORS})\s*(?:머리|머리카락))",
+        r"(짧은\s*머리|긴\s*머리)",
         r"(장발|단발머리|단발|반삭머리|반삭|삭발|버섯머리|투블럭|숏컷|곱슬머리|곱슬|직모|생머리)",
     ):
         value = _first(pattern, normalized)
@@ -56,7 +72,7 @@ def parse_message(text: str) -> tuple[Appearance, list[str]]:
         weight=_first(r"몸무게\s*(\d{2,3})\s*kg", normalized),
         body_type=body,
         hair=" ".join(hair_parts),
-        top=_garment(normalized, TOPS),
+        top=_tops(normalized),
         outerwear=_garment(normalized, OUTER),
         bottom=_garment(normalized, BOTTOMS),
         shoes=_garment(normalized, SHOES),
