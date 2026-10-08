@@ -1,4 +1,7 @@
-from app.main import analyze, app
+import pytest
+from fastapi import HTTPException
+
+from app.main import analyze, app, stats
 from app.schemas import AnalyzeRequest
 
 
@@ -13,4 +16,10 @@ def test_analyze_api_handler():
 def test_required_routes_are_registered():
     paths = {route.path for route in app.routes}
     assert {"/", "/api/analyze", "/api/generate", "/api/admin/stats", "/health"} <= paths
+
+
+def test_admin_stats_are_hidden_without_configured_secret():
+    with pytest.raises(HTTPException) as error:
+        stats("")
+    assert error.value.status_code == 404
 

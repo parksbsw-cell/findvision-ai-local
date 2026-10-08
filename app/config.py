@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     max_message_chars: int = 1800
     rate_limit_per_hour: int = 20
     mock_generation: bool = False
+    admin_token: str = ""
 
 
 settings = Settings()

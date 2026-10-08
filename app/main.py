@@ -1,9 +1,10 @@
 import hashlib
+import hmac
 import secrets
 import time
 from collections import defaultdict
 
-from fastapi import Cookie, FastAPI, HTTPException, Request, Response
+from fastapi import Cookie, FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -75,7 +76,9 @@ async def generate(request: GenerateRequest, fv_visitor: str | None = Cookie(def
 
 
 @app.get("/api/admin/stats")
-def stats():
+def stats(x_admin_token: str = Header(default="")):
+    if not settings.admin_token or not hmac.compare_digest(x_admin_token, settings.admin_token):
+        raise HTTPException(404, "찾을 수 없습니다.")
     return analytics.summary()
 
 
