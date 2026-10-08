@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import hmac
 import secrets
@@ -18,6 +19,7 @@ app = FastAPI(title="FindVision AI Local", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 analytics = Analytics(settings.data_dir / "analytics.db")
 requests_by_visitor: dict[str, list[float]] = defaultdict(list)
+generation_lock = asyncio.Lock()
 
 
 def visitor_id(raw: str) -> str:
@@ -75,7 +77,17 @@ async def generate(request: GenerateRequest, fv_visitor: str | None = Cookie(def
     token = fv_visitor or "anonymous"
     hashed = visitor_id(token)
     rate_limit(hashed)
-    result = await generate_verified(request.message, request.appearance)
+    if generation_lock.locked():
+        raise HTTPException(409, "다른 이미지를 생성 중입니다. 잠시 후 다시 시도해 주세요.")
+    async with generation_lock:
+        try:
+            result = await generate_verified(request.message, request.appearance)
+        except HTTPException:
+            raise
+        except Exception as error:
+            raise HTTPException(
+                503, "로컬 AI 실행에 실패했습니다. Ollama와 GPU 모델 상태를 확인해 주세요."
+            ) from error
     analytics.record(hashed, "generated")
     return result
 

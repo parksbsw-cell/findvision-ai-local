@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 
 
 class Appearance(BaseModel):
+    name: str = ""
     gender: str = ""
     age: str = ""
     height: str = ""

@@ -23,7 +23,21 @@ def test_prompt_translates_critical_korean_terms_and_stays_compact():
     )
     prompt = image_prompt(appearance)
     assert "Korean man" in prompt
+    assert "17-year-old Korean teenage boy" in prompt
     assert "outer shirt fully unbuttoned" in prompt
     assert "in right hand brown walking cane" in prompt
+    assert not any("가" <= char <= "힣" for char in prompt)
+
+
+def test_prompt_translates_compact_alert_terms():
+    prompt = image_prompt(Appearance(gender="남", age="18", height="175", weight="74", top="검은색 반팔", bottom="검은색 바지", shoes="검은색 크록스", glasses="안경"))
+    assert "Korean man" in prompt
+    assert "175 cm tall" in prompt
+    assert "short-sleeve T-shirt" in prompt
+    assert "Crocs-style foam clogs" in prompt
+    assert "full-length trousers" in prompt
+    assert "eyeglasses" in prompt
+    assert "EXACTLY ONE person" in prompt
+    assert "18-year-old Korean teenage boy" in prompt
     assert not any("가" <= char <= "힣" for char in prompt)
 

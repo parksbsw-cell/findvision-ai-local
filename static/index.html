@@ -17,9 +17,12 @@
       <div class="actions"><button id="analyze">1단계 · 내용 분석</button><button id="generate" disabled>2단계 · 이미지 생성</button></div>
       <p id="status" role="status"></p>
     </section>
-    <section class="card hidden" id="analysis"><h2>확인된 인상착의</h2><div id="facts"></div></section>
+    <section class="card hidden" id="analysis"><h2>1. 분석 결과 확인 및 수정</h2>
+      <p class="muted">잘못 분석된 항목은 이미지 생성 전에 직접 고칠 수 있습니다. 빈칸은 정보 없음으로 처리됩니다.</p>
+      <div class="fact-grid" id="facts"></div></section>
     <section class="card hidden" id="result"><h2>재난문자 이미지 알림</h2><blockquote id="original"></blockquote>
-      <img id="image" alt="AI가 생성한 전신 참고 이미지"><p id="verification"></p></section>
+      <img id="image" alt="AI가 생성한 전신 참고 이미지"><p id="verification"></p>
+      <button id="regenerate">다시 생성하기</button></section>
   </main>
   <dialog id="popup"><h2>📱 실종 재난문자 이미지 알림</h2><p id="popup-message"></p><img id="popup-image" alt="AI 참고 이미지"><button id="close-popup">확인</button></dialog>
   <script src="/static/app.js"></script>

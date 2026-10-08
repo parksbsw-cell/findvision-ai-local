@@ -36,16 +36,25 @@ class LocalImageGenerator:
 
             pipe = self._load()
             generator = torch.Generator(device="cpu").manual_seed(seed)
+            negatives = [
+                "cropped body", "missing feet", "extra fingers", "duplicate person", "two people",
+                "multiple people", "second person", "repeated person", "alternate pose", "text",
+                "watermark", "logo", "inaccurate clothing", "extra accessories",
+                "collage", "split screen", "multiple views", "inset image", "contact sheet",
+            ]
+            if "short-sleeve" in prompt and "outer" not in prompt:
+                negatives.extend(["long sleeves", "jacket", "coat", "outerwear"])
+            if "Crocs-style" in prompt:
+                negatives.extend(["sneakers", "lace-up shoes", "sandals", "slides", "flip-flops"])
+            if "trousers" in prompt and "shorts" not in prompt:
+                negatives.extend(["shorts", "bare legs"])
             image = pipe(
                 prompt=prompt,
-                negative_prompt=(
-                    "cropped body, missing feet, extra fingers, duplicate person, text, watermark, "
-                    "logo, inaccurate clothing, extra accessories"
-                ),
+                negative_prompt=", ".join(negatives),
                 width=768,
                 height=1024,
                 num_inference_steps=28,
-                guidance_scale=6.5,
+                guidance_scale=8.0,
                 generator=generator,
             ).images[0]
         output = BytesIO()

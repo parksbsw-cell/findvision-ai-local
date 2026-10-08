@@ -4,7 +4,7 @@ from .schemas import Appearance
 
 COLORS = r"검은색|검정색|흰색|하얀색|회색|갈색|남색|파란색|빨간색|초록색|노란색|분홍색|보라색|베이지색"
 SHOES = r"고무신|크록스|운동화|슬리퍼|샌들|구두|단화|부츠|장화|신발"
-TOPS = r"반팔[ ]*셔츠|긴팔[ ]*셔츠|반팔티|긴팔티|티셔츠|셔츠|남방|니트|맨투맨|후드티|조끼"
+TOPS = r"반팔[ ]*셔츠|긴팔[ ]*셔츠|반팔티|긴팔티|반팔|긴팔|티셔츠|셔츠|남방|니트|맨투맨|후드티|조끼"
 OUTER = r"자켓|재킷|점퍼|코트|패딩|바람막이|후드집업|외투|겉옷|작업복"
 BOTTOMS = r"반바지|긴바지|청바지|면바지|슬랙스|치마|치마바지|바지"
 
@@ -14,9 +14,15 @@ def _first(pattern: str, text: str, group: int = 1) -> str:
     return match.group(group).strip() if match else ""
 
 
+def _labeled(label: str, text: str) -> str:
+    return _first(rf"(?:{label})\s*[:：]?\s*([^,;/\]\[.]+)", text)
+
+
 def _garment(text: str, kinds: str) -> str:
     return _first(
-        rf"((?:{COLORS})?\s*(?:얇은\s*|두꺼운\s*)?(?:학교\s*)?(?:{kinds}))", text
+        rf"((?:{COLORS})?\s*(?:얇은\s*|두꺼운\s*)?(?:체크(?:무늬)?\s*|줄무늬\s*)?"
+        rf"(?:학교\s*)?(?:{kinds}))",
+        text,
     )
 
 
@@ -34,10 +40,19 @@ def _tops(text: str) -> str:
 
 
 def is_missing_alert(text: str) -> bool:
-    missing = bool(re.search(r"실종|찾습니다|배회|보호자를\s*찾", text))
-    person = bool(re.search(r"\d{1,3}\s*세|남성|여성|남자|여자|키\s*\d", text))
-    action = bool(re.search(r"착용|인상착의|발견\s*시|경찰서|경찰청", text))
-    return missing and person and action
+    normalized = re.sub(r"\s+", " ", text)
+    explicit = bool(re.search(r"실종|찾습니다|찾아주세요|배회|보호자를\s*찾", normalized))
+    named = bool(re.search(r"(?:이름|성명)\s*[:：]?\s*[가-힣○*]{2,5}", normalized))
+    age = bool(re.search(r"\d{1,3}\s*세", normalized))
+    gender = bool(re.search(r"남성|여성|남자|여자|(?:^|[,(\s])(?:남|여)(?=$|[,)\s])", normalized))
+    appearance_hits = sum(
+        bool(re.search(pattern, normalized, re.IGNORECASE))
+        for pattern in (COLORS, SHOES, TOPS, OUTER, BOTTOMS, r"\d{2,3}\s*cm", r"\d{2,3}\s*kg")
+    )
+    authority = bool(re.search(r"경찰|안전안내문자|실종경보|☎|연락", normalized))
+    return (explicit and age and gender) or (named and age and gender and appearance_hits >= 2) or (
+        explicit and authority and appearance_hits >= 2
+    )
 
 
 def parse_message(text: str) -> tuple[Appearance, list[str]]:
@@ -66,21 +81,30 @@ def parse_message(text: str) -> tuple[Appearance, list[str]]:
 
     body = _first(r"(고도\s*비만|비만|저체중|통통한\s*편|마른\s*편|건장한\s*편|보통\s*체형)", normalized)
     appearance = Appearance(
-        gender=_first(r"(남성|여성|남자|여자)", normalized),
+        name=_first(r"(?:이름|성명)\s*[:：]?\s*([가-힣○*]{2,5})", normalized)
+        or _first(r"([가-힣○*]{2,5})\s*[([]\s*(?:남|여|남성|여성)", normalized),
+        gender=_first(r"(남성|여성|남자|여자)", normalized)
+        or _first(r"(?:^|[,(\s])(남|여)(?=$|[,)\s])", normalized),
         age=_first(r"(\d{1,3})\s*세", normalized),
-        height=_first(r"키\s*(\d{2,3})\s*cm", normalized),
-        weight=_first(r"몸무게\s*(\d{2,3})\s*kg", normalized),
+        height=_first(r"(?:(?:키|신장)\s*[:：]?\s*)?(\d{2,3})\s*(?i:cm)", normalized, 1)
+        or _first(r"(?:키|신장)\s*[:：]?\s*(\d{2,3})(?!\d)", normalized),
+        weight=_first(r"(?:(?:몸무게|체중)\s*[:：]?\s*)?(\d{2,3})\s*(?i:kg)", normalized, 1)
+        or _first(r"(?:몸무게|체중)\s*[:：]?\s*(\d{2,3})(?!\d)", normalized),
         body_type=body,
         hair=" ".join(hair_parts),
-        top=_tops(normalized),
+        top=_tops(normalized) or _labeled("상의", normalized),
         outerwear=_garment(normalized, OUTER),
-        bottom=_garment(normalized, BOTTOMS),
-        shoes=_garment(normalized, SHOES),
+        bottom=_garment(normalized, BOTTOMS) or _labeled("하의", normalized),
+        shoes=_labeled("신발", normalized) or _garment(normalized, SHOES),
         hat=_first(rf"((?:{COLORS})?\s*(?:캡모자|야구모자|등산모자|벙거지|버킷햇|비니|모자))", normalized),
-        glasses="안경" if re.search(r"안경\s*(?:착용|씀|쓴)", normalized) else "",
+        glasses="안경" if re.search(r"안경", normalized) else "",
         facial_hair=_first(r"(콧수염|턱수염|수염)", normalized),
         accessories=accessories,
-        last_seen=_first(r"(?:마지막\s*)?목격(?:\s*위치|\s*장소)?\s*[:：]?\s*([^,.]+)", normalized),
+        last_seen=_first(
+            r"(?:(?:마지막\s*)?목격(?:\s*위치|\s*장소)?|실종\s*장소|발생\s*장소)"
+            r"\s*[:：]?\s*([^,.]+)",
+            normalized,
+        ),
     )
     warnings = []
     if not is_missing_alert(normalized):

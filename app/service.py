@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import secrets
 
@@ -19,16 +20,22 @@ verifier = OllamaVisionVerifier(
 async def generate_verified(message: str, appearance: Appearance | None = None) -> GenerateResponse:
     if appearance is None:
         appearance, _ = parse_message(message)
-    best_image = b""
+    await verifier.unload()
+    prompt = image_prompt(appearance)
+    candidates = [
+        await asyncio.to_thread(generator.generate, prompt, secrets.randbits(31))
+        for _ in range(settings.max_attempts)
+    ]
+    best_image = candidates[0]
     best = Verification(passed=False, score=0, feedback="검수 결과 없음")
     attempts = 0
-    for attempts in range(1, settings.max_attempts + 1):
-        image = generator.generate(image_prompt(appearance), secrets.randbits(31))
-        verdict = await verifier.verify(image, appearance)
-        if verdict.score >= best.score:
-            best_image, best = image, verdict
-        if verdict.passed:
-            break
+    try:
+        for attempts, image in enumerate(candidates, 1):
+            verdict = await verifier.verify(image, appearance)
+            if verdict.score >= best.score:
+                best_image, best = image, verdict
+    finally:
+        await verifier.unload()
     return GenerateResponse(
         image_base64=base64.b64encode(best_image).decode("ascii"),
         attempts=attempts,
