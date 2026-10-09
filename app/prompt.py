@@ -41,7 +41,7 @@ TRANSLATIONS = {
     "학교": "school",
     "반팔 셔츠": "short sleeve button shirt",
     "긴팔 셔츠": "long sleeve button shirt",
-    "크록스": "foam clogs",
+    "크록스": "Crocs clogs",
     "안경": "eyeglasses",
     "고무신": "Korean rubber slip-on shoes",
     "지팡이": "walking cane",
@@ -109,10 +109,11 @@ def image_prompt(a: Appearance, correction: str = "") -> str:
     ]
     extras = [translate_terms(value) for value in (a.body_type, a.hair, *a.accessories) if value]
     prompt = (
-        "Wearing " + ", ".join(clothing) + ". Studio ID photo, full body, one "
-        + subject + ", front view, standing, arms beside thighs, visible hands and feet, centered. "
+        "Wearing " + ", ".join(clothing) + ". Police lineup record photo, full body, one "
+        + subject + ", front view, standing straight. Straight arms, open hands visible beside thighs. "
+        "Feet parallel, centered. "
         + ((", ".join(extras) + ". ") if extras else "")
-        + "Ordinary person, unposed, unretouched. Plain gray background, flat neutral light."
+        + "Ordinary person, no styling. Plain gray background, flat light."
     )
     if correction:
         prompt += " Correct the previous image: " + correction

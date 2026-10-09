@@ -19,7 +19,8 @@ class OllamaVisionVerifier:
         encoded = base64.b64encode(image).decode("ascii")
         prompt = (
             "Inspect only directly visible facts. Count people. Decide whether this is a real photograph, "
-            "whether the background is completely empty and plain, whether either hand is inside a pocket, "
+            "whether the background is completely empty and plain, whether either hand is hidden, touching "
+            "a pocket, inside a pocket, or not fully visible beside the thighs, "
             "whether bottoms are shorts or ankle-length and their color, the top color and sleeve length, "
             "whether glasses are worn, the exact footwear category and color, whether outerwear is present, "
             "and list every extra accessory such as bags, hats, canes, umbrellas, jewelry, or watches."
@@ -48,7 +49,7 @@ class OllamaVisionVerifier:
         if not scene.plain_empty_background:
             wrong.append("비어 있는 단색 스튜디오 배경이 아님")
         if scene.hands_in_pockets:
-            wrong.append("손이 주머니에 들어가 있음")
+            wrong.append("양손이 몸 옆에 완전히 보이지 않거나 주머니에 닿아 있음")
         bottom = translate_terms(appearance.bottom).lower()
         if ("trousers" in bottom or "long pants" in bottom) and scene.bottom_length != "ankle_length":
             wrong.append(f"긴바지 요구와 다름: {scene.bottom_length}")

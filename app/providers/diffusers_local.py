@@ -40,13 +40,13 @@ class LocalImageGenerator:
             if "solid black short sleeve" in prompt:
                 negatives.extend(["white shirt", "gray shirt", "colored shirt"])
             negatives.extend([
-                "hands in pockets", "crossed arms", "fashion model", "fashion pose", "glamour",
+                "hands in pockets", "hidden hands", "bent arms", "crossed arms", "fashion model", "fashion pose", "glamour",
                 "anime", "illustration", "outdoors", "room", "furniture", "collage",
                 "two people", "cropped body", "missing feet", "text", "watermark",
             ])
             if "short sleeve" in prompt and "outer" not in prompt:
                 negatives.extend(["long sleeves", "jacket", "coat", "outerwear"])
-            if "foam clogs" in prompt:
+            if "Crocs clogs" in prompt:
                 negatives.extend(["sneakers", "sandals", "slides"])
             if ("trousers" in prompt or "long pants" in prompt) and "shorts" not in prompt:
                 negatives.extend(["shorts", "bermuda shorts", "cropped pants", "bare legs"])
