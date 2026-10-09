@@ -11,7 +11,7 @@ def test_prompt_keeps_rubber_shoes_and_cane():
     assert any("Korean rubber slip-on shoes" in item for item in requirements)
     assert any("walking cane" in item for item in requirements)
     prompt = image_prompt(appearance)
-    assert "Hands and feet visible" in prompt
+    assert "visible hands and feet" in prompt
 
 
 def test_prompt_translates_critical_korean_terms_and_stays_compact():
@@ -36,8 +36,9 @@ def test_prompt_translates_compact_alert_terms():
     assert "eyeglasses" in prompt
     assert "one 18-year-old" in prompt
     assert "18-year-old Korean teenage boy" in prompt
-    assert "Empty plain gray background" in prompt
-    assert "arms hanging beside thighs" in prompt
-    assert "Realistic full body studio photo" in prompt
+    assert "Plain gray background" in prompt
+    assert "arms beside thighs" in prompt
+    assert "Studio ID photo" in prompt
+    assert "Ordinary person, unposed" in prompt
     assert not any("가" <= char <= "힣" for char in prompt)
 

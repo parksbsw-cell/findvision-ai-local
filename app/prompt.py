@@ -109,10 +109,10 @@ def image_prompt(a: Appearance, correction: str = "") -> str:
     ]
     extras = [translate_terms(value) for value in (a.body_type, a.hair, *a.accessories) if value]
     prompt = (
-        "Exact clothes: " + ", ".join(clothing) + ". Realistic full body studio photo, one "
-        + subject + ", front view, standing, arms hanging beside thighs, visible hands. "
+        "Wearing " + ", ".join(clothing) + ". Studio ID photo, full body, one "
+        + subject + ", front view, standing, arms beside thighs, visible hands and feet, centered. "
         + ((", ".join(extras) + ". ") if extras else "")
-        + "Hands and feet visible, centered. Empty plain gray background, soft light, natural skin."
+        + "Ordinary person, unposed, unretouched. Plain gray background, flat neutral light."
     )
     if correction:
         prompt += " Correct the previous image: " + correction

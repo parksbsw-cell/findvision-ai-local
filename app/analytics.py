@@ -1,5 +1,6 @@
 import sqlite3
-from datetime import UTC, datetime, timedelta
+from collections import defaultdict
+from datetime import UTC, date, datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -26,28 +27,50 @@ class Analytics:
 
     def summary(self) -> dict[str, float | int]:
         with self._connect() as db:
-            visits = db.execute("SELECT COUNT(*) FROM events WHERE kind='visit'").fetchone()[0]
-            visitors = db.execute(
-                "SELECT COUNT(DISTINCT visitor) FROM events WHERE kind='visit'"
-            ).fetchone()[0]
-            returning = db.execute(
-                "SELECT COUNT(*) FROM (SELECT visitor FROM events WHERE kind='visit' "
-                "GROUP BY visitor HAVING COUNT(DISTINCT substr(created_at,1,10)) > 1)"
-            ).fetchone()[0]
+            visit_rows = db.execute(
+                "SELECT visitor, created_at FROM events WHERE kind='visit' ORDER BY created_at"
+            ).fetchall()
             generated = db.execute(
                 "SELECT COUNT(*) FROM events WHERE kind='generated'"
             ).fetchone()[0]
-            cutoff = (datetime.now(UTC) - timedelta(days=7)).isoformat()
-            recent = db.execute(
-                "SELECT COUNT(DISTINCT visitor) FROM events WHERE kind='visit' AND created_at>=?",
-                (cutoff,),
+            generators = db.execute(
+                "SELECT COUNT(DISTINCT visitor) FROM events WHERE kind='generated'"
             ).fetchone()[0]
+
+        korea = timezone(timedelta(hours=9))
+        today = datetime.now(korea).date()
+        days_by_visitor: dict[str, set[date]] = defaultdict(set)
+        for visitor, created_at in visit_rows:
+            timestamp = datetime.fromisoformat(created_at)
+            if timestamp.tzinfo is None:
+                timestamp = timestamp.replace(tzinfo=UTC)
+            days_by_visitor[visitor].add(timestamp.astimezone(korea).date())
+
+        visits = len(visit_rows)
+        visitors = len(days_by_visitor)
+        returning = sum(len(days) > 1 for days in days_by_visitor.values())
+        returning_days = sum(max(0, len(days) - 1) for days in days_by_visitor.values())
+        recent = sum(any(day >= today - timedelta(days=6) for day in days) for days in days_by_visitor.values())
+
+        d1_eligible = d1_returned = d7_eligible = d7_returned = 0
+        for days in days_by_visitor.values():
+            first = min(days)
+            if first <= today - timedelta(days=1):
+                d1_eligible += 1
+                d1_returned += first + timedelta(days=1) in days
+            if first <= today - timedelta(days=7):
+                d7_eligible += 1
+                d7_returned += any(first < day <= first + timedelta(days=7) for day in days)
         return {
             "visits": visits,
             "visitors": visitors,
             "returning_visitors": returning,
             "retention_percent": round(returning / visitors * 100, 1) if visitors else 0.0,
+            "returning_days": returning_days,
+            "d1_retention_percent": round(d1_returned / d1_eligible * 100, 1) if d1_eligible else 0.0,
+            "d7_retention_percent": round(d7_returned / d7_eligible * 100, 1) if d7_eligible else 0.0,
             "generated": generated,
+            "generation_conversion_percent": round(generators / visitors * 100, 1) if visitors else 0.0,
             "visitors_7d": recent,
         }
 

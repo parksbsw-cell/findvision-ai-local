@@ -40,15 +40,14 @@ class LocalImageGenerator:
             if "solid black short sleeve" in prompt:
                 negatives.extend(["white shirt", "gray shirt", "colored shirt"])
             negatives.extend([
-                "hands in pockets", "crossed arms", "anime",
-                "illustration", "cartoon", "CGI", "outdoors", "street", "room", "store",
-                "shelves", "furniture", "collage", "multiple people", "duplicate person",
-                "action pose", "side view", "cropped body", "missing feet", "text", "watermark",
+                "hands in pockets", "crossed arms", "fashion model", "fashion pose", "glamour",
+                "anime", "illustration", "outdoors", "room", "furniture", "collage",
+                "two people", "cropped body", "missing feet", "text", "watermark",
             ])
             if "short sleeve" in prompt and "outer" not in prompt:
                 negatives.extend(["long sleeves", "jacket", "coat", "outerwear"])
-            if "Crocs-style" in prompt:
-                negatives.extend(["sneakers", "lace-up shoes", "sandals", "slides", "flip-flops"])
+            if "foam clogs" in prompt:
+                negatives.extend(["sneakers", "sandals", "slides"])
             if ("trousers" in prompt or "long pants" in prompt) and "shorts" not in prompt:
                 negatives.extend(["shorts", "bermuda shorts", "cropped pants", "bare legs"])
             image = pipe(
