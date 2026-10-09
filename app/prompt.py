@@ -39,18 +39,18 @@ TRANSLATIONS = {
     "머리카락": "hair",
     "머리": "hair",
     "학교": "school",
-    "반팔 셔츠": "short-sleeve button-up shirt",
-    "긴팔 셔츠": "long-sleeve button-up shirt",
-    "크록스": "closed-toe Crocs-style foam clogs with ventilation holes and heel straps",
-    "안경": "clearly visible eyeglasses",
+    "반팔 셔츠": "short sleeve button shirt",
+    "긴팔 셔츠": "long sleeve button shirt",
+    "크록스": "foam clogs",
+    "안경": "eyeglasses",
     "고무신": "Korean rubber slip-on shoes",
     "지팡이": "walking cane",
-    "반팔티": "short-sleeve T-shirt",
-    "긴팔티": "long-sleeve T-shirt",
-    "반팔": "short-sleeve T-shirt",
-    "긴팔": "long-sleeve T-shirt",
+    "반팔티": "short sleeve T shirt",
+    "긴팔티": "long sleeve T shirt",
+    "반팔": "short sleeve T shirt",
+    "긴팔": "long sleeve T shirt",
     "반바지": "shorts",
-    "긴바지": "long pants",
+    "긴바지": "long trousers",
     "바지": "full-length trousers",
     "상의": "top",
     "하의": "bottom",
@@ -101,24 +101,18 @@ def subject_description(a: Appearance) -> str:
 
 
 def image_prompt(a: Appearance, correction: str = "") -> str:
-    requirements = visual_requirements(a)
     subject = subject_description(a)
     clothing = [
         translate_terms(value)
         for value in (a.top, a.outerwear, a.bottom, a.shoes, a.hat, a.glasses)
         if value
     ]
+    extras = [translate_terms(value) for value in (a.body_type, a.hair, *a.accessories) if value]
     prompt = (
-        "SUBJECT: exactly one " + subject + ". The subject must visibly match this Korean age group. "
-        "MANDATORY VISIBLE CLOTHING: " + "; ".join(clothing) + ". "
-        "Documentary studio photograph of EXACTLY ONE person. The same person must appear only once. "
-        "Standing straight, front-facing, arms relaxed at the sides, centered, neutral expression. "
-        "Single uninterrupted head-to-toe view, hands and feet visible. "
-        "The clothing colors and garment types below are mandatory and must be literal. Required: "
-        + "; ".join(requirements)
-        + ". Plain light gray background. Photorealistic Korean missing-person appearance reference. "
-        "No collage, no inset, no alternate pose, no second person, no props unless explicitly required. "
-        "Repeat exactly: " + "; ".join(clothing) + "."
+        "Exact clothes: " + ", ".join(clothing) + ". Realistic full body studio photo, one "
+        + subject + ", front view, standing, arms hanging beside thighs, visible hands. "
+        + ((", ".join(extras) + ". ") if extras else "")
+        + "Hands and feet visible, centered. Empty plain gray background, soft light, natural skin."
     )
     if correction:
         prompt += " Correct the previous image: " + correction

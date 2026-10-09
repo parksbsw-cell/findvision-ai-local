@@ -11,7 +11,7 @@ def test_prompt_keeps_rubber_shoes_and_cane():
     assert any("Korean rubber slip-on shoes" in item for item in requirements)
     assert any("walking cane" in item for item in requirements)
     prompt = image_prompt(appearance)
-    assert "hands and feet visible" in prompt
+    assert "Hands and feet visible" in prompt
 
 
 def test_prompt_translates_critical_korean_terms_and_stays_compact():
@@ -22,7 +22,6 @@ def test_prompt_translates_critical_korean_terms_and_stays_compact():
         accessories=["오른손에 갈색 지팡이"],
     )
     prompt = image_prompt(appearance)
-    assert "Korean man" in prompt
     assert "17-year-old Korean teenage boy" in prompt
     assert "outer shirt fully unbuttoned" in prompt
     assert "in right hand brown walking cane" in prompt
@@ -31,13 +30,14 @@ def test_prompt_translates_critical_korean_terms_and_stays_compact():
 
 def test_prompt_translates_compact_alert_terms():
     prompt = image_prompt(Appearance(gender="남", age="18", height="175", weight="74", top="검은색 반팔", bottom="검은색 바지", shoes="검은색 크록스", glasses="안경"))
-    assert "Korean man" in prompt
-    assert "175 cm tall" in prompt
-    assert "short-sleeve T-shirt" in prompt
-    assert "Crocs-style foam clogs" in prompt
+    assert "short sleeve T shirt" in prompt
+    assert "foam clogs" in prompt
     assert "full-length trousers" in prompt
     assert "eyeglasses" in prompt
-    assert "EXACTLY ONE person" in prompt
+    assert "one 18-year-old" in prompt
     assert "18-year-old Korean teenage boy" in prompt
+    assert "Empty plain gray background" in prompt
+    assert "arms hanging beside thighs" in prompt
+    assert "Realistic full body studio photo" in prompt
     assert not any("가" <= char <= "힣" for char in prompt)
 

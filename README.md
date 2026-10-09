@@ -6,8 +6,8 @@
 ## 핵심 구조
 
 - 규칙 기반 한국어 인상착의 추출: 원문에 없는 특징을 만들지 않음
-- SDXL 로컬 이미지 생성: API 키와 건당 크레딧 불필요
-- Ollama `qwen2.5vl:3b` 3회 검수: 인물·의복·소지품을 분리 검사하고 불일치 시 최대 3회 재생성
+- 실사 인물용 RealVisXL 로컬 이미지 생성: API 키와 건당 크레딧 불필요
+- Ollama `qwen2.5vl:3b` 검수: 후보 3장의 배경·자세·의복·신발을 각각 확인하고 가장 가까운 결과 선택
 - SQLite 익명 통계: 방문, 생성, 재방문, 리텐션
 - FastAPI: 향후 Android 재난문자 공유 앱이 같은 API 사용
 - 원문·생성 이미지는 통계 DB에 저장하지 않음
@@ -33,9 +33,9 @@ $env:FINDVISION_MOCK_GENERATION="true"
 2. `pip install -e ".[gpu]"`로 이미지 모델 의존성을 설치합니다.
 3. Ollama 0.12.7 이상을 설치하고 `ollama pull qwen2.5vl:3b`를 실행합니다.
 4. `.env.example`을 `.env`로 복사하고 `FINDVISION_MOCK_GENERATION=false`를 확인합니다.
-5. 처음 생성할 때 SDXL 모델 파일이 다운로드됩니다.
+5. 처음 생성할 때 `SG161222/RealVisXL_V4.0` FP16 모델 파일이 다운로드됩니다.
 
-이 PC에는 CUDA 12.8용 PyTorch, SDXL FP16, `qwen2.5vl:3b`가 설치되어 실제 생성까지
+이 PC에는 CUDA 12.8용 PyTorch, RealVisXL V4.0 FP16, `qwen2.5vl:3b`가 설치되어 실제 생성까지
 확인되었습니다. 이후에는 프로젝트 폴더에서 다음 명령으로 실행합니다.
 
 ```powershell

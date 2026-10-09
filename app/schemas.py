@@ -57,6 +57,22 @@ class GroupAudit(BaseModel):
     checks: list[VisualCheck]
 
 
+class SceneAudit(BaseModel):
+    person_count: int
+    is_real_photo: bool
+    plain_empty_background: bool
+    hands_in_pockets: bool
+    bottom_length: str = Field(description="shorts, ankle_length, skirt, or other")
+    bottom_color: str
+    top_color: str
+    top_sleeve: str = Field(description="short, long, sleeveless, or other")
+    wears_glasses: bool
+    footwear_type: str
+    footwear_color: str
+    outerwear_present: bool
+    extra_accessories: list[str] = Field(default_factory=list)
+
+
 class GenerateResponse(BaseModel):
     image_base64: str
     mime_type: str = "image/png"

@@ -2,6 +2,8 @@ import asyncio
 import base64
 import secrets
 
+import httpx
+
 from .config import settings
 from .parser import parse_message
 from .prompt import image_prompt
@@ -26,12 +28,21 @@ async def generate_verified(message: str, appearance: Appearance | None = None) 
         await asyncio.to_thread(generator.generate, prompt, secrets.randbits(31))
         for _ in range(settings.max_attempts)
     ]
+    generator.release_gpu_cache()
     best_image = candidates[0]
     best = Verification(passed=False, score=0, feedback="검수 결과 없음")
     attempts = 0
     try:
         for attempts, image in enumerate(candidates, 1):
-            verdict = await verifier.verify(image, appearance)
+            try:
+                verdict = await verifier.verify(image, appearance)
+            except (TimeoutError, ValueError, httpx.TimeoutException):
+                verdict = Verification(
+                    passed=False,
+                    score=0,
+                    wrong=["시각 검수가 제한 시간 안에 완료되지 않음"],
+                    feedback="시각 검수가 제한 시간 안에 완료되지 않음",
+                )
             if verdict.score >= best.score:
                 best_image, best = image, verdict
     finally:

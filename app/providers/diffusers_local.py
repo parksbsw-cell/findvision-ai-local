@@ -36,18 +36,21 @@ class LocalImageGenerator:
 
             pipe = self._load()
             generator = torch.Generator(device="cpu").manual_seed(seed)
-            negatives = [
-                "cropped body", "missing feet", "extra fingers", "duplicate person", "two people",
-                "multiple people", "second person", "repeated person", "alternate pose", "text",
-                "watermark", "logo", "inaccurate clothing", "extra accessories",
-                "collage", "split screen", "multiple views", "inset image", "contact sheet",
-            ]
-            if "short-sleeve" in prompt and "outer" not in prompt:
+            negatives = []
+            if "solid black short sleeve" in prompt:
+                negatives.extend(["white shirt", "gray shirt", "colored shirt"])
+            negatives.extend([
+                "hands in pockets", "crossed arms", "anime",
+                "illustration", "cartoon", "CGI", "outdoors", "street", "room", "store",
+                "shelves", "furniture", "collage", "multiple people", "duplicate person",
+                "action pose", "side view", "cropped body", "missing feet", "text", "watermark",
+            ])
+            if "short sleeve" in prompt and "outer" not in prompt:
                 negatives.extend(["long sleeves", "jacket", "coat", "outerwear"])
             if "Crocs-style" in prompt:
                 negatives.extend(["sneakers", "lace-up shoes", "sandals", "slides", "flip-flops"])
-            if "trousers" in prompt and "shorts" not in prompt:
-                negatives.extend(["shorts", "bare legs"])
+            if ("trousers" in prompt or "long pants" in prompt) and "shorts" not in prompt:
+                negatives.extend(["shorts", "bermuda shorts", "cropped pants", "bare legs"])
             image = pipe(
                 prompt=prompt,
                 negative_prompt=", ".join(negatives),
@@ -60,4 +63,16 @@ class LocalImageGenerator:
         output = BytesIO()
         image.save(output, format="PNG", optimize=True)
         return output.getvalue()
+
+    def release_gpu_cache(self) -> None:
+        if self.mock:
+            return
+        import gc
+
+        import torch
+
+        self._pipeline = None
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
