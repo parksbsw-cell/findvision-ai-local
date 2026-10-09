@@ -9,6 +9,8 @@ dependencies = [
   "httpx>=0.27,<1",
   "pillow>=10.4,<12",
   "python-multipart>=0.0.12,<1",
+  "streamlit>=1.37,<2",
+  "streamlit-cookies-controller==0.0.4",
 ]
 
 [project.optional-dependencies]
@@ -26,6 +28,10 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint.per-file-ignores]
+"streamlit_app.py" = ["ALL"]
+"preview_logic.py" = ["ALL"]
 
 [tool.setuptools.packages.find]
 include = ["app*"]

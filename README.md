@@ -5,11 +5,12 @@
 
 ## 핵심 구조
 
-- 규칙 기반 한국어 인상착의 추출: 원문에 없는 특징을 만들지 않음
+- 기존 FindVision Streamlit 화면·입력·분석 수정·생성·다운로드 흐름 유지
+- Ollama 기반 한국어 인상착의 추출: 원문에 없는 특징을 만들지 않음
 - 실사 인물용 RealVisXL 로컬 이미지 생성: API 키와 건당 크레딧 불필요
 - Ollama `qwen2.5vl:3b` 검수: 후보 3장의 배경·자세·의복·신발을 각각 확인하고 가장 가까운 결과 선택
-- SQLite 익명 통계: 방문, 생성, 재방문, 리텐션
-- FastAPI: 향후 Android 재난문자 공유 앱이 같은 API 사용
+- 기존 익명 방문·생성·재방문·리텐션 화면 유지(Supabase 설정 시 팀 통계 활성화)
+- FastAPI 코드는 향후 Android 재난문자 공유 앱 연계를 위해 함께 유지
 - 원문·생성 이미지는 통계 DB에 저장하지 않음
 
 로컬 생성은 금전 크레딧을 소비하지 않지만 GPU 전기, 저장 공간과 실행 중인 PC가 필요합니다.
@@ -21,7 +22,7 @@
 py -3.11 -m venv .venv
 .venv\Scripts\pip install -e ".[dev]"
 $env:FINDVISION_MOCK_GENERATION="true"
-.venv\Scripts\uvicorn app.main:app --reload
+.venv\Scripts\streamlit run streamlit_app.py --server.port 8000
 ```
 
 브라우저에서 `http://127.0.0.1:8000`을 엽니다. 개발 모드는 모델 대신 테스트 이미지를
@@ -42,8 +43,7 @@ $env:FINDVISION_MOCK_GENERATION="true"
 .\start.ps1
 ```
 
-관리자 통계는 `http://127.0.0.1:8000/admin`에서 확인합니다. `.env`의
-`FINDVISION_ADMIN_TOKEN` 값을 입력해야 하며 토큰은 브라우저에 저장하지 않습니다.
+팀 통계는 기존 제품과 같이 Supabase 환경 변수를 설정했을 때 앱의 관리자 영역에 표시됩니다.
 
 RTX 5060 8GB에서는 CPU offload를 사용하므로 VRAM 초과를 줄이는 대신 생성 시간이 늘어날 수 있습니다.
 

@@ -12,5 +12,4 @@ if (-not (Test-Path -LiteralPath $python)) {
 }
 
 Write-Host "FindVision AI: http://127.0.0.1:8000"
-Write-Host "관리자 통계: http://127.0.0.1:8000/admin"
-& $python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+& $python -m streamlit run streamlit_app.py --server.address 127.0.0.1 --server.port 8000 --server.headless true --browser.gatherUsageStats false
