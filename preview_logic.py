@@ -229,6 +229,20 @@ def _explicit_facial_hair(text: str) -> str:
 def _apply_text_facts(features: dict[str, Any], text: str, overwrite: bool = False) -> None:
     if not text.strip():
         return
+    if overwrite or not _has_value(features, "gender"):
+        if re.search(r"(?:실종|성별)?\s*(?:여성|여자)(?!용)", text):
+            features["gender"] = "여성"
+        elif re.search(r"(?:실종|성별)?\s*(?:남성|남자)(?!용)", text):
+            features["gender"] = "남성"
+    for key, pattern, suffix in (
+        ("age", r"(?:나이\s*)?(\d{1,3})\s*세", "세"),
+        ("height", r"(?:키\s*)?(\d{2,3})\s*cm", "cm"),
+        ("weight", r"(?:몸무게\s*)?(\d{2,3})\s*kg", "kg"),
+    ):
+        if overwrite or not _has_value(features, key):
+            match = re.search(pattern, text, re.I)
+            if match:
+                features[key] = match.group(1) + suffix
     if overwrite or not _has_value(features, "skin_tone"):
         match = re.search(r"피부(?:톤|는)?\s*(밝은\s*편|어두운\s*편|보통|희고|검은\s*편)", text)
         if match:
@@ -237,6 +251,12 @@ def _apply_text_facts(features: dict[str, Any], text: str, overwrite: bool = Fal
         color = _find_color_before(text, r"(?:머리|머리색)")
         if not color:
             match = re.search(rf"머리색\s*({COLORS})", text)
+            color = _normalize_color(match.group(1)) if match else ""
+        if not color:
+            match = re.search(
+                rf"({COLORS})\s*(?:(?:약간\s*)?(?:짧은|긴|단발|장발|곱슬|직모|파마)\s*)*머리",
+                text,
+            )
             color = _normalize_color(match.group(1)) if match else ""
         if color:
             features["hair_color"] = color

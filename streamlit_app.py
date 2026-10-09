@@ -422,7 +422,21 @@ def sync_prompt_text_from_structured_features(features: dict) -> dict:
     """Rebuild from structured appearance only; discard free-form model prose."""
     parts = []
     requirements = []
-    for key, value in visual_facts(features).items():
+    facts = visual_facts(features)
+    # SDXL has a short first text window. Put visually decisive facts first so
+    # long disaster messages cannot push clothing and possessions out of it.
+    priority = (
+        "gender", "age", "outerwear", "top", "bottom", "shoes",
+        "accessories", "hat_type", "hat_color", "glasses", "facial_hair",
+        "hair_color", "hair_length", "hair_texture", "hair_style",
+        "body_type", "skin_tone", "height", "weight", "special_features",
+        "nationality", "top_brand", "outerwear_brand", "bottom_brand",
+        "shoes_brand", "hat_brand",
+    )
+    ordered_keys = [key for key in priority if key in facts]
+    ordered_keys.extend(key for key in facts if key not in ordered_keys)
+    for key in ordered_keys:
+        value = facts[key]
         if key.endswith("_brand") or key == "nationality":
             continue
         # Brands remain in the analysis display. Logos are not verification criteria.
@@ -499,6 +513,22 @@ def build_generation_prompt(
         "미국": "American", "미국인": "American", "일본": "Japanese", "일본인": "Japanese",
         "중국": "Chinese", "중국인": "Chinese",
     }.get(nationality, nationality or "Korean")
+    gender_value = str(features.get("gender", "") or "").strip()
+    gender_en = "female" if re.search(r"여|female|woman|girl", gender_value, re.I) else "male"
+    age_match = re.search(r"\d{1,3}", str(features.get("age", "") or ""))
+    subject_en = f"{age_match.group(0)}-year-old {nationality_en} {gender_en}" if age_match else f"{nationality_en} {gender_en}"
+    clothing_parts = []
+    for key, label in (("outerwear", "OUTERWEAR"), ("top", "TOP"), ("bottom", "BOTTOM"), ("shoes", "SHOES")):
+        value = str(features.get(key, "") or "").strip()
+        if value:
+            translated = phrase_to_prompt_en(value)
+            if key == "outerwear":
+                translated = f"solid {translated}, same single color across torso and both sleeves"
+            clothing_parts.append(f"{label}: {translated}")
+    accessories = str(features.get("accessories", "") or "").strip()
+    if accessories:
+        clothing_parts.append(f"CARRYING: {phrase_to_prompt_en(accessories)}")
+    clothing_block = "; ".join(clothing_parts)
     layers = ("Wear the stated outerwear over the inner top. A closed outer layer may hide the top."
               if features.get("outerwear") else "No outerwear is specified; do not add a coat or jacket.")
     haircut = (
@@ -519,7 +549,9 @@ def build_generation_prompt(
     # SDXL reads only the first CLIP token window. Put the user's facts first so the
     # unchanged legacy product flow does not lose clothing, age or accessories.
     prompt = (
-        f"Photorealistic full-body {nationality_en} missing-person reference photo. "
+        f"Photorealistic full-body missing-person reference photo of one {subject_en}. "
+        + (f"MANDATORY CLOTHING AND ITEMS: {clothing_block}. " if clothing_block else "")
+        + "All garments are plain and unbranded: no logo, emblem, badge, letters, numbers or decorative mark. "
         f"Required appearance: {description}. "
         "Exactly one ordinary person, straight front view, neutral expression, arms down, hands visible, "
         "feet visible, plain near-white background, even documentary light. "
