@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import hmac
 import json
 import os
@@ -15,6 +16,7 @@ import streamlit as st
 from streamlit_cookies_controller import CookieController
 
 from app.config import settings
+from app.analytics import Analytics
 from app.providers.diffusers_local import LocalImageGenerator
 
 from preview_logic import (
@@ -41,6 +43,7 @@ st.set_page_config(
 )
 
 cookie_controller = CookieController()
+local_analytics = Analytics(settings.data_dir / "analytics.db")
 
 TEXT_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast"
 IMAGE_MODEL = "@cf/black-forest-labs/flux-2-klein-4b"
@@ -756,7 +759,17 @@ def supabase_key() -> str:
 
 
 def get_visit_cookie_secret() -> str:
-    return get_secret("VISITOR_COOKIE_SECRET") or get_secret("CLOUDFLARE_API_TOKEN")
+    return (
+        get_secret("VISITOR_COOKIE_SECRET")
+        or get_secret("CLOUDFLARE_API_TOKEN")
+        or settings.admin_token
+        or "findvision-local-anonymous-visitor-v1"
+    )
+
+
+def _local_visitor_key(user_id: str) -> str:
+    """Store a one-way anonymous identifier instead of the browser UUID."""
+    return hashlib.sha256(f"findvision:{user_id}".encode()).hexdigest()
 
 
 def _sign_visitor_cookie(user_id: str, visits: int) -> str:
@@ -795,8 +808,12 @@ def get_anonymous_user_id() -> str:
 
 
 def log_site_visit(user_id: str, event_id: str) -> bool:
+    try:
+        local_analytics.record(_local_visitor_key(user_id), "visit")
+    except Exception:
+        pass
     if not analytics_enabled():
-        return False
+        return True
     try:
         response = requests.post(
             get_secret("SUPABASE_URL").rstrip("/") + "/rest/v1/rpc/cluesight_record_visit",
@@ -885,6 +902,42 @@ def fetch_analytics_summary() -> dict:
     if not isinstance(result, dict) or not required.issubset(result):
         raise ValueError("Invalid analytics summary")
     return result
+
+
+def public_retention_summary() -> dict:
+    """Return shared cumulative counts, preferring the configured team database."""
+    if analytics_enabled():
+        try:
+            remote = fetch_analytics_summary()
+            total_users = int(remote.get("total_users", 0) or 0)
+            returning = int(remote.get("returning_users", 0) or 0)
+            return {
+                "visitors": total_users,
+                "visits": int(remote.get("total_visits", 0) or 0),
+                "returning_visitors": returning,
+                "retention_percent": round(returning / total_users * 100, 1)
+                if total_users else 0.0,
+            }
+        except Exception:
+            pass
+    return local_analytics.summary()
+
+
+def show_public_retention_metrics() -> None:
+    try:
+        metrics = public_retention_summary()
+    except Exception:
+        st.caption("방문 통계를 불러오는 중입니다.")
+        return
+    first, second, third, fourth = st.columns(4)
+    first.metric("누적 방문자", f"{int(metrics.get('visitors', 0))}명")
+    second.metric("전체 방문 횟수", f"{int(metrics.get('visits', 0))}회")
+    third.metric("재방문자", f"{int(metrics.get('returning_visitors', 0))}명")
+    fourth.metric("리텐션", f"{float(metrics.get('retention_percent', 0)):.1f}%")
+    st.caption(
+        "익명 브라우저 기준 · 재방문자는 서로 다른 한국 날짜에 다시 방문한 사용자입니다. "
+        "재난문자 원문과 생성 이미지는 통계에 저장하지 않습니다."
+    )
 
 
 def parse_created_at(value: str):
@@ -1151,9 +1204,8 @@ def show_message_result_popup(result: dict) -> None:
 
 st.title("🔎 FindVision AI")
 st.caption(f"인상착의를 이해하는 AI 참고 이미지 · 버전 {APP_VERSION}")
-usage_metric = st.empty()
-usage_metric.metric("이 브라우저의 사이트 방문 횟수", f"{record_site_visit()}회")
-st.caption("익명 방문 횟수이며 이 브라우저·기기에서만 계산됩니다. 쿠키를 삭제하면 초기화될 수 있습니다.")
+record_site_visit()
+show_public_retention_metrics()
 
 st.caption(
     "상세 실종 재난문자를 AI가 분석하고, 인상착의를 반영한 "
@@ -1291,7 +1343,6 @@ if run_requested and edited_features:
             st.session_state["last_result"] = result
             st.session_state["last_analysis"] = edited_features
             st.session_state.pop("generation_error", None)
-            usage_metric.metric("이 브라우저의 사이트 방문 횟수", f"{record_site_visit()}회")
             verdict = result["best"]["verification"]
             result["analytics_saved"] = log_analytics_event(
                 get_anonymous_user_id(), "image_generated",
