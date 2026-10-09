@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="FINDVISION_", env_file=".env")
 
     data_dir: Path = Path("data")
-    image_model: str = "SG161222/RealVisXL_V4.0"
+    image_model: str = "SG161222/Realistic_Vision_V5.1_noVAE"
     verifier_model: str = "qwen2.5vl:3b"
     ollama_url: str = "http://127.0.0.1:11434"
     max_attempts: int = 3

@@ -25,7 +25,15 @@ async def generate_verified(message: str, appearance: Appearance | None = None) 
     await verifier.unload()
     prompt = image_prompt(appearance)
     candidates = [
-        await asyncio.to_thread(generator.generate, prompt, secrets.randbits(31))
+        await asyncio.to_thread(
+            generator.generate,
+            prompt,
+            secrets.randbits(31),
+            768,
+            1024,
+            30,
+            7.5,
+        )
         for _ in range(settings.max_attempts)
     ]
     generator.release_gpu_cache()

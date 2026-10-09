@@ -1,4 +1,5 @@
 import re
+import threading
 from io import BytesIO
 from pathlib import Path
 
@@ -10,27 +11,59 @@ class LocalImageGenerator:
         self.model_id = model_id
         self.mock = mock
         self._pipeline = None
+        self._load_lock = threading.Lock()
 
     def _load(self):
         if self._pipeline is not None:
             return self._pipeline
-        import torch
-        from diffusers import AutoPipelineForImage2Image, DiffusionPipeline
+        with self._load_lock:
+            if self._pipeline is not None:
+                return self._pipeline
+            import torch
+            from diffusers import (
+                AutoPipelineForImage2Image,
+                DiffusionPipeline,
+                DPMSolverMultistepScheduler,
+            )
 
-        pipe = DiffusionPipeline.from_pretrained(
-            self.model_id,
-            variant="fp16",
-            torch_dtype=torch.float16,
-            use_safetensors=True,
-        )
-        pipe.enable_model_cpu_offload()
-        pipe.enable_attention_slicing()
-        self._pipeline = AutoPipelineForImage2Image.from_pipe(pipe)
-        return self._pipeline
+            load_options = {"torch_dtype": torch.float16, "use_safetensors": True}
+            if "xl" in self.model_id.lower():
+                load_options["variant"] = "fp16"
+            pipe = DiffusionPipeline.from_pretrained(self.model_id, **load_options)
+            pipeline = AutoPipelineForImage2Image.from_pipe(pipe)
+            pipeline.enable_attention_slicing()
+            if hasattr(pipeline, "enable_vae_slicing"):
+                pipeline.enable_vae_slicing()
+            elif hasattr(pipeline.vae, "enable_slicing"):
+                pipeline.vae.enable_slicing()
+            if torch.cuda.is_available() and "xl" not in self.model_id.lower():
+                pipeline.to("cuda")
+            else:
+                pipeline.enable_model_cpu_offload()
+            pipeline.scheduler = DPMSolverMultistepScheduler.from_config(
+                pipeline.scheduler.config,
+                algorithm_type="dpmsolver++",
+                use_karras_sigmas=True,
+            )
+            self._pipeline = pipeline
+            return self._pipeline
 
-    def generate(self, prompt: str, seed: int) -> bytes:
+    def preload(self) -> None:
+        """Load model weights before the user presses the generation button."""
+        if not self.mock:
+            self._load()
+
+    def generate(
+        self,
+        prompt: str,
+        seed: int,
+        width: int = 768,
+        height: int = 1024,
+        steps: int = 30,
+        guidance: float = 7.0,
+    ) -> bytes:
         if self.mock:
-            image = Image.new("RGB", (512, 768), "#e9eef5")
+            image = Image.new("RGB", (width, height), "#e9eef5")
             draw = ImageDraw.Draw(image)
             draw.text((24, 24), f"FindVision local test\nseed={seed}", fill="#172033")
         else:
@@ -68,22 +101,28 @@ class LocalImageGenerator:
                 negatives.extend(["white shirt", "gray shirt", "colored shirt"])
             if "short sleeve" in prompt and "outer" not in prompt:
                 negatives.extend(["long sleeves", "jacket", "coat"])
-            if "Crocs clogs" in prompt:
+            if "crocs-style" in prompt.lower() or "clogs" in prompt.lower():
                 negatives.extend(["sneakers", "sandals", "slides", "open-toe shoes"])
             if ("trousers" in prompt or "long pants" in prompt) and "shorts" not in prompt:
                 negatives.extend(["shorts", "cropped pants", "bare legs"])
             if "glasses:" not in prompt.lower():
                 negatives.extend(["glasses", "sunglasses"])
             pose_path = self._pose_path(prompt)
-            pose_image = Image.open(pose_path).convert("RGB").resize((768, 1024), Image.Resampling.LANCZOS)
+            pose_image = Image.open(pose_path).convert("RGB").resize(
+                (width, height), Image.Resampling.LANCZOS
+            )
+            exact_reference = "glasses:" in prompt.lower() and (
+                "crocs-style" in prompt.lower() or "clogs" in prompt.lower()
+            )
             image = pipe(
                 prompt=prompt,
                 negative_prompt=", ".join(negatives),
                 image=pose_image,
-                # Preserve the old product's natural face and straight posture.
-                strength=0.84,
-                num_inference_steps=32,
-                guidance_scale=7.5,
+                # Preserve the clean reference face, glasses, shoes and neutral
+                # proportions while still allowing requested clothing changes.
+                strength=0.32 if exact_reference else (0.76 if steps >= 30 else 0.72),
+                num_inference_steps=steps,
+                guidance_scale=guidance,
                 generator=generator,
             ).images[0]
         output = BytesIO()
@@ -99,9 +138,11 @@ class LocalImageGenerator:
         assets = Path(__file__).resolve().parents[1] / "assets"
         if age is not None and age <= 12:
             return assets / ("neutral-front-girl.png" if female else "neutral-front-boy.png")
-        return assets / (
-            "neutral-front-female.png" if female else "product-style-male-no-glasses.png"
-        )
+        if female:
+            return assets / "neutral-front-female.png"
+        if "glasses:" in normalized:
+            return assets / "product-style-male-glasses-crocs.png"
+        return assets / "product-style-male-no-glasses.png"
 
     def release_gpu_cache(self) -> None:
         if self.mock:

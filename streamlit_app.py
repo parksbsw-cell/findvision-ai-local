@@ -52,8 +52,8 @@ VISION_MODEL = "@cf/moondream/moondream3.1-9B-A2B"
 
 MAX_ATTEMPTS = 3
 FAST_ATTEMPTS = 1
-FAST_WIDTH = 512
-FAST_HEIGHT = 768
+FAST_WIDTH = 640
+FAST_HEIGHT = 960
 DETAILED_WIDTH = 896
 DETAILED_HEIGHT = 1152
 GENERATION_LIMIT = 1000000
@@ -177,7 +177,6 @@ def json_headers() -> dict:
 def cloudflare_json_request(model: str, payload: dict, timeout: int = 120) -> Any:
     messages = payload.get("messages", [])
     if model == VISION_MODEL:
-        get_local_image_generator().release_gpu_cache()
         image_value = payload.get("image", "")
         image_b64 = image_value.split(",", 1)[-1]
         messages = [{"role": "user", "content": payload.get("question", ""), "images": [image_b64]}]
@@ -204,13 +203,37 @@ def cloudflare_json_request(model: str, payload: dict, timeout: int = 120) -> An
 def cloudflare_multipart_request(model: str, fields: dict, timeout: int = 180) -> Any:
     unload_ollama_model()
     generator = get_local_image_generator()
-    image_bytes = generator.generate(str(fields.get("prompt", "")), random.SystemRandom().randrange(1, 2**31))
+    width = int(fields.get("width", FAST_WIDTH))
+    height = int(fields.get("height", FAST_HEIGHT))
+    detailed = width >= DETAILED_WIDTH
+    image_bytes = generator.generate(
+        str(fields.get("prompt", "")),
+        random.SystemRandom().randrange(1, 2**31),
+        width=width,
+        height=height,
+        steps=30 if detailed else 20,
+        guidance=7.5 if detailed else 7.0,
+    )
     return {"image": base64.b64encode(image_bytes).decode("ascii")}
 
 
 @st.cache_resource(show_spinner=False)
 def get_local_image_generator() -> LocalImageGenerator:
     return LocalImageGenerator(settings.image_model, settings.mock_generation)
+
+
+@st.cache_resource(show_spinner=False)
+def start_image_model_warmup() -> threading.Thread | None:
+    """Warm the local model while the user reads or enters the alert."""
+    if settings.mock_generation:
+        return None
+    thread = threading.Thread(
+        target=get_local_image_generator().preload,
+        name="findvision-image-model-warmup",
+        daemon=True,
+    )
+    thread.start()
+    return thread
 
 
 def unload_ollama_model() -> None:
@@ -446,7 +469,9 @@ def sync_prompt_text_from_structured_features(features: dict) -> dict:
         for brand in BRANDS:
             if brand.lower() not in {"crocs", "크록스"}:
                 value = re.sub(re.escape(brand), "", value, flags=re.I)
-        value = value.replace("크록스", "clogs").replace("Crocs", "clogs")
+        value = value.replace(
+            "크록스", "Crocs-style foam clogs with a rounded closed toe and ventilation holes"
+        )
         value = re.sub(r"로고\s*(있는|없는)|[()]", "", value).strip()
         part = f"{key.replace('_', ' ')}: {phrase_to_prompt_en(value)}"
         parts.append(part)
@@ -778,15 +803,46 @@ def _sign_visitor_cookie(user_id: str, visits: int) -> str:
     return f"{value}:{signature}"
 
 
+def _fallback_browser_id() -> str:
+    """Stable anonymous fallback for browsers that block component cookies."""
+    try:
+        headers = st.context.headers
+        signals = [
+            headers.get("X-Forwarded-For", "").split(",", 1)[0].strip(),
+            headers.get("X-Real-Ip", "").strip(),
+            headers.get("User-Agent", "").strip(),
+            headers.get("Accept-Language", "").strip(),
+            headers.get("Sec-Ch-Ua", "").strip(),
+            headers.get("Host", "").strip(),
+        ]
+    except Exception:
+        signals = []
+    fingerprint = "|".join(signals)
+    if fingerprint.strip("|"):
+        digest = hmac.new(
+            get_visit_cookie_secret().encode(), fingerprint.encode(), "sha256"
+        ).hexdigest()
+        return str(uuid.uuid5(uuid.NAMESPACE_URL, f"findvision:{digest}"))
+    return str(uuid.uuid4())
+
+
 def get_visitor_state() -> tuple[str, int]:
     if "findvision_uid" in st.session_state:
         return st.session_state["findvision_uid"], safe_count(st.session_state.get("visit_count"))
     saved = None
     try:
-        saved = cookie_controller.get("findvision_visit_v1")
+        # Request cookies are available immediately. The component controller
+        # can arrive one render later, which previously created a new visitor
+        # before an existing cookie was read.
+        saved = st.context.cookies.get("findvision_visit_v1")
     except Exception:
         pass
-    user_id, visits = str(uuid.uuid4()), 0
+    if not saved:
+        try:
+            saved = cookie_controller.get("findvision_visit_v1")
+        except Exception:
+            pass
+    user_id, visits = _fallback_browser_id(), 0
     secret = get_visit_cookie_secret()
     if secret and saved:
         try:
@@ -852,8 +908,14 @@ def record_site_visit() -> int:
         secret = get_visit_cookie_secret()
         if secret:
             try:
-                cookie_controller.set("findvision_visit_v1", _sign_visitor_cookie(user_id, visits),
-                                     max_age=365 * 24 * 60 * 60)
+                cookie_controller.set(
+                    "findvision_visit_v1",
+                    _sign_visitor_cookie(user_id, visits),
+                    path="/",
+                    max_age=365 * 24 * 60 * 60,
+                    secure=False,
+                    same_site="lax",
+                )
             except Exception:
                 pass
         log_site_visit(user_id, str(uuid.uuid4()))
@@ -935,7 +997,7 @@ def show_public_retention_metrics() -> None:
     third.metric("재방문자", f"{int(metrics.get('returning_visitors', 0))}명")
     fourth.metric("리텐션", f"{float(metrics.get('retention_percent', 0)):.1f}%")
     st.caption(
-        "익명 브라우저 기준 · 재방문자는 서로 다른 한국 날짜에 다시 방문한 사용자입니다. "
+        "익명 브라우저 기준 · 같은 브라우저의 두 번째 세션부터 재방문으로 집계합니다. "
         "재난문자 원문과 생성 이미지는 통계에 저장하지 않습니다."
     )
 
@@ -1169,7 +1231,7 @@ def generate_reference_result(features: dict, message: str, mode: str) -> dict:
                 best["verification"]["pass"], best["verification"]["available"],
                 best["verification"]["score"]):
             best = candidate
-        if verdict.get("skipped") or verdict["pass"] or not verdict["available"]:
+        if mode == "빠른 생성" and verdict.get("skipped"):
             break
         correction = verdict["feedback_en"]
     status.empty()
@@ -1204,6 +1266,8 @@ def show_message_result_popup(result: dict) -> None:
 
 st.title("🔎 FindVision AI")
 st.caption(f"인상착의를 이해하는 AI 참고 이미지 · 버전 {APP_VERSION}")
+if __name__ == "__main__":
+    start_image_model_warmup()
 record_site_visit()
 show_public_retention_metrics()
 
@@ -1261,18 +1325,8 @@ message = st.text_area(
     placeholder="받은 실종 재난문자 원문을 수정하지 않고 붙여 넣으세요.",
     height=170, max_chars=1500,
 )
-if message.strip():
-    if is_missing_alert(message):
-        st.success("실종 재난문자 형식으로 확인되었습니다.")
-    else:
-        st.info(
-            "실종 재난문자 형식이 확실하지 않습니다. 가상 테스트 문장이라면 그대로 분석할 수 있습니다."
-        )
-st.info(
-    "입력 내용과 생성 이미지는 이 컴퓨터의 로컬 AI에서 처리됩니다. "
-    "전체 통계를 켜면 익명 브라우저 ID와 방문·분석·생성 시각 및 생성 상태만 저장합니다. "
-    "재난문자 원문·이름·목격 위치·이미지는 통계 DB에 저장하지 않습니다. 테스트에는 가상 예시를 사용하세요."
-)
+if message.strip() and is_missing_alert(message):
+    st.success("실종 재난문자 형식으로 확인되었습니다.")
 
 if st.button("1단계: AI 인상착의 분석", type="primary", use_container_width=True):
     if not message.strip():

@@ -19,6 +19,7 @@ def test_retention_uses_korean_dates_and_distinct_return_days(tmp_path):
 
     summary = analytics.summary()
     assert summary["visitors"] == 2
+    assert summary["visits"] == 2
     assert summary["returning_visitors"] == 1
     assert summary["returning_days"] == 2
     assert summary["retention_percent"] == 50.0
