@@ -553,8 +553,10 @@ def build_generation_prompt(
         + (f"MANDATORY CLOTHING AND ITEMS: {clothing_block}. " if clothing_block else "")
         + "All garments are plain and unbranded: no logo, emblem, badge, letters, numbers or decorative mark. "
         f"Required appearance: {description}. "
-        "Exactly one ordinary person, straight front view, neutral expression, arms down, hands visible, "
-        "feet visible, plain near-white background, even documentary light. "
+        "Exactly one ordinary Korean person photographed like a plain public-safety appearance reference: "
+        "natural realistic face, straight front view, neutral expression, symmetrical standing posture, "
+        "both arms naturally straight down beside the body, relaxed open hands, full body and both feet visible, "
+        "soft light-gray seamless studio background, flat even documentary lighting, centered vertical framing. "
         + layers + " " + button_state + haircut + possessions
         + " No fashion pose, text, logo, props, extra person, extra limb or duplicate item."
     )

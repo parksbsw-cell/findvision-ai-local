@@ -72,13 +72,16 @@ class LocalImageGenerator:
                 negatives.extend(["sneakers", "sandals", "slides", "open-toe shoes"])
             if ("trousers" in prompt or "long pants" in prompt) and "shorts" not in prompt:
                 negatives.extend(["shorts", "cropped pants", "bare legs"])
+            if "glasses:" not in prompt.lower():
+                negatives.extend(["glasses", "sunglasses"])
             pose_path = self._pose_path(prompt)
             pose_image = Image.open(pose_path).convert("RGB").resize((768, 1024), Image.Resampling.LANCZOS)
             image = pipe(
                 prompt=prompt,
                 negative_prompt=", ".join(negatives),
                 image=pose_image,
-                strength=0.98,
+                # Preserve the old product's natural face and straight posture.
+                strength=0.84,
                 num_inference_steps=32,
                 guidance_scale=7.5,
                 generator=generator,
@@ -96,7 +99,9 @@ class LocalImageGenerator:
         assets = Path(__file__).resolve().parents[1] / "assets"
         if age is not None and age <= 12:
             return assets / ("neutral-front-girl.png" if female else "neutral-front-boy.png")
-        return assets / ("neutral-front-female.png" if female else "neutral-front-pose-v2.png")
+        return assets / (
+            "neutral-front-female.png" if female else "product-style-male-no-glasses.png"
+        )
 
     def release_gpu_cache(self) -> None:
         if self.mock:
