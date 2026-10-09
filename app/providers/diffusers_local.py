@@ -36,20 +36,19 @@ class LocalImageGenerator:
 
             pipe = self._load()
             generator = torch.Generator(device="cpu").manual_seed(seed)
-            negatives = []
+            negatives = [
+                "hands in pockets", "hidden hands", "crossed arms", "folded arms", "bent arms", "fashion pose",
+                "belt", "vignette", "dramatic lighting",
+                "cropped body", "missing feet", "two people", "anime", "illustration",
+            ]
             if "solid black short sleeve" in prompt:
                 negatives.extend(["white shirt", "gray shirt", "colored shirt"])
-            negatives.extend([
-                "hands in pockets", "hidden hands", "bent arms", "crossed arms", "fashion model", "fashion pose", "glamour",
-                "anime", "illustration", "outdoors", "room", "furniture", "collage",
-                "two people", "cropped body", "missing feet", "text", "watermark",
-            ])
             if "short sleeve" in prompt and "outer" not in prompt:
-                negatives.extend(["long sleeves", "jacket", "coat", "outerwear"])
+                negatives.extend(["long sleeves", "jacket", "coat"])
             if "Crocs clogs" in prompt:
-                negatives.extend(["sneakers", "sandals", "slides"])
+                negatives.extend(["sneakers", "sandals", "slides", "open-toe shoes"])
             if ("trousers" in prompt or "long pants" in prompt) and "shorts" not in prompt:
-                negatives.extend(["shorts", "bermuda shorts", "cropped pants", "bare legs"])
+                negatives.extend(["shorts", "cropped pants", "bare legs"])
             image = pipe(
                 prompt=prompt,
                 negative_prompt=", ".join(negatives),

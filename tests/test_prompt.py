@@ -36,7 +36,7 @@ def test_prompt_translates_compact_alert_terms():
     assert "eyeglasses" in prompt
     assert "one 18-year-old" in prompt
     assert "18-year-old Korean teenage boy" in prompt
-    assert "Plain gray background" in prompt
+    assert "Plain near-white background" in prompt
     assert "Straight arms" in prompt
     assert "Police lineup record photo" in prompt
     assert "Ordinary person, no styling" in prompt
