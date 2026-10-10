@@ -52,8 +52,8 @@ VISION_MODEL = "@cf/moondream/moondream3.1-9B-A2B"
 
 MAX_ATTEMPTS = 3
 FAST_ATTEMPTS = 1
-FAST_WIDTH = 640
-FAST_HEIGHT = 960
+FAST_WIDTH = 704
+FAST_HEIGHT = 1056
 DETAILED_WIDTH = 896
 DETAILED_HEIGHT = 1152
 GENERATION_LIMIT = 1000000
@@ -211,8 +211,8 @@ def cloudflare_multipart_request(model: str, fields: dict, timeout: int = 180) -
         random.SystemRandom().randrange(1, 2**31),
         width=width,
         height=height,
-        steps=30 if detailed else 20,
-        guidance=7.5 if detailed else 7.0,
+        steps=32 if detailed else 24,
+        guidance=7.5 if detailed else 7.2,
     )
     return {"image": base64.b64encode(image_bytes).decode("ascii")}
 

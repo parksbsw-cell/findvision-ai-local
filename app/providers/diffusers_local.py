@@ -75,6 +75,8 @@ class LocalImageGenerator:
             negatives = [
                 "hands in pockets", "crossed arms", "fashion pose", "fashion model",
                 "makeup", "beauty retouching", "glamour", "smiling", "belt", "vignette",
+                "blurry face", "asymmetric eyes", "closed eyes", "deformed face",
+                "distorted glasses", "soft focus", "low detail skin", "long neck",
                 "dramatic lighting", "cropped body", "missing feet", "extra person",
                 "extra limbs", "extra shoes", "anime", "illustration",
                 "logo", "emblem", "badge", "brand mark", "letters", "text on clothes",
@@ -120,7 +122,7 @@ class LocalImageGenerator:
                 image=pose_image,
                 # Preserve the clean reference face, glasses, shoes and neutral
                 # proportions while still allowing requested clothing changes.
-                strength=0.32 if exact_reference else (0.76 if steps >= 30 else 0.72),
+                strength=0.28 if exact_reference else (0.74 if steps >= 30 else 0.70),
                 num_inference_steps=steps,
                 guidance_scale=guidance,
                 generator=generator,
