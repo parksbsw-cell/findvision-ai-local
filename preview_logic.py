@@ -234,9 +234,9 @@ def _apply_text_facts(features: dict[str, Any], text: str, overwrite: bool = Fal
             features["gender"] = "여성"
         elif re.search(r"(?:실종|성별)?\s*(?:남성|남자)(?!용)", text):
             features["gender"] = "남성"
-        elif re.search(r"(?:^|[,;/\s])여(?:[,;/\s]|$)", text):
+        elif re.search(r"(?:^|[([,;/\s])여(?:[)\],;/\s]|$)", text):
             features["gender"] = "여성"
-        elif re.search(r"(?:^|[,;/\s])남(?:[,;/\s]|$)", text):
+        elif re.search(r"(?:^|[([,;/\s])남(?:[)\],;/\s]|$)", text):
             features["gender"] = "남성"
     for key, pattern, suffix in (
         ("age", r"(?:나이\s*)?(\d{1,3})\s*세", "세"),
@@ -266,8 +266,10 @@ def _apply_text_facts(features: dict[str, Any], text: str, overwrite: bool = Fal
             features["hair_color"] = color
     if overwrite or not _has_value(features, "hair_length"):
         match = re.search(r"머리(?:길이)?\s*(약간\s*짧음|짧음|짧은|긴|중간|장발)", text)
+        if not match:
+            match = re.search(r"(약간\s*짧은|짧은|긴|중간\s*길이|장발)\s*(?:[가-힣]+색\s*)?머리", text)
         if match:
-            features["hair_length"] = match.group(1).replace("짧은", "짧음")
+            features["hair_length"] = match.group(1).replace("약간 짧은", "약간 짧음").replace("짧은", "짧음")
     if "직모" in text and (overwrite or not _has_value(features, "hair_texture")):
         features["hair_texture"] = "직모"
     if "생머리" in text and (overwrite or not _has_value(features, "hair_texture")):
@@ -382,6 +384,13 @@ def enhance_features_from_text(features: dict[str, Any], original: str, details:
             continue
         if not re.search(CLOTHES[garment], combined_text):
             enhanced[garment] = ""
+    # Sleeve length attached to an outerwear noun ("긴팔 재킷") is not a
+    # separate inner top. Keep top empty unless an actual top noun is stated.
+    if enhanced.get("outerwear") and not re.search(
+        r"티셔츠|반팔티|긴팔티|셔츠|블라우스|니트|맨투맨|후드티|상의",
+        combined_text,
+    ):
+        enhanced["top"] = ""
     # Explicit category associations override model guesses (e.g. shirt brand on shoes).
     for garment, brand_key in (("top", "top_brand"), ("outerwear", "outerwear_brand"),
                                ("bottom", "bottom_brand"), ("shoes", "shoes_brand"),

@@ -306,35 +306,37 @@ verification_requirements_en 규칙:
 - 위치·이름은 이미지 검수 조건에 넣지 않는다.
 """.strip()
 
-    result = cloudflare_json_request(
-        TEXT_MODEL,
-        {
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {
-                    "role": "user",
-                    "content": analysis_message(original),
+    try:
+        result = cloudflare_json_request(
+            TEXT_MODEL,
+            {
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {
+                        "role": "user",
+                        "content": analysis_message(original),
+                    },
+                ],
+                "temperature": 0.0,
+                "max_tokens": 1800,
+                "stream": False,
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": schema,
                 },
-            ],
-            "temperature": 0.0,
-            "max_tokens": 1800,
-            "stream": False,
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": schema,
             },
-        },
-    )
-
-    parsed = result.get("response", result) if isinstance(result, dict) else result
-
-    if isinstance(parsed, str):
-        parsed = json.loads(parsed)
-
-    if not isinstance(parsed, dict):
-        raise RuntimeError("AI 분석 결과가 올바른 형식이 아닙니다.")
-
-    features = {key: str(parsed.get(key, "") or "").strip() for key in FIELDS}
+        )
+        parsed = result.get("response", result) if isinstance(result, dict) else result
+        if isinstance(parsed, str):
+            parsed = json.loads(parsed)
+        if not isinstance(parsed, dict):
+            raise RuntimeError("AI 분석 결과가 올바른 형식이 아닙니다.")
+        features = {key: str(parsed.get(key, "") or "").strip() for key in FIELDS}
+    except Exception:
+        # Generation must remain usable if the local language model is busy,
+        # times out, or returns malformed JSON. The deterministic extractor
+        # below recovers only facts explicitly present in the alert.
+        features = {key: "" for key in FIELDS}
     features = enhance_features_from_text(features, original, "")
     return sync_prompt_text_from_structured_features(features)
 
@@ -557,6 +559,16 @@ def build_generation_prompt(
     if accessories:
         clothing_parts.append(f"CARRYING: {phrase_to_prompt_en(accessories)}")
     clothing_block = "; ".join(clothing_parts)
+    head_parts = []
+    for key, label in (
+        ("glasses", "EYEWEAR"), ("hair_color", "HAIR COLOR"),
+        ("hair_length", "HAIR LENGTH"), ("hair_texture", "HAIR TEXTURE"),
+        ("hair_style", "HAIRSTYLE"),
+    ):
+        value = str(features.get(key, "") or "").strip()
+        if value:
+            head_parts.append(f"{label}: {phrase_to_prompt_en(value)}")
+    head_block = "; ".join(head_parts)
     layers = ("Wear the stated outerwear over the inner top. A closed outer layer may hide the top."
               if features.get("outerwear") else "No outerwear is specified; do not add a coat or jacket.")
     haircut = (
@@ -568,6 +580,11 @@ def build_generation_prompt(
         "parts and hand/body placement clearly visible. Do not merge, duplicate or substitute them. "
         if features.get("accessories") else ""
     )
+    pose_instruction = (
+        "Hold each stated possession naturally in its specified hand; keep both hands fully visible. "
+        if features.get("accessories")
+        else "Both arms naturally straight down beside the body with relaxed open hands. "
+    )
     button_state = (
         "The stated button/closure state is mandatory. Keep the outer shirt fully open so the inner "
         "top remains clearly visible. "
@@ -578,12 +595,13 @@ def build_generation_prompt(
     # unchanged legacy product flow does not lose clothing, age or accessories.
     prompt = (
         f"Photorealistic full-body missing-person reference photo of one {subject_en}. "
+        + (f"MANDATORY FACE AND HEAD: {head_block}. " if head_block else "")
         + (f"MANDATORY CLOTHING AND ITEMS: {clothing_block}. " if clothing_block else "")
         + "All garments are plain and unbranded: no logo, emblem, badge, letters, numbers or decorative mark. "
         f"Required appearance: {description}. "
         "Exactly one ordinary Korean person photographed like a plain public-safety appearance reference: "
         "natural realistic face, straight front view, neutral expression, symmetrical standing posture, "
-        "both arms naturally straight down beside the body, relaxed open hands, full body and both feet visible, "
+        + pose_instruction + "Full body and both feet visible, "
         "soft light-gray seamless studio background, flat even documentary lighting, centered vertical framing. "
         + layers + " " + button_state + haircut + possessions
         + " No fashion pose, text, logo, props, extra person, extra limb or duplicate item."

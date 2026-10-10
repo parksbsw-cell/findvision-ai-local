@@ -3,7 +3,7 @@ import threading
 from io import BytesIO
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 
 
 class LocalImageGenerator:
@@ -77,6 +77,9 @@ class LocalImageGenerator:
                 "makeup", "beauty retouching", "glamour", "smiling", "belt", "vignette",
                 "blurry face", "asymmetric eyes", "closed eyes", "deformed face",
                 "distorted glasses", "soft focus", "low detail skin", "long neck",
+                "plastic skin", "wax face", "over-smoothed face", "uneven eyes",
+                "misaligned pupils", "distorted ears", "fused fingers", "missing fingers",
+                "disfigured hands", "asymmetric shoulders", "tilted body",
                 "dramatic lighting", "cropped body", "missing feet", "extra person",
                 "extra limbs", "extra shoes", "anime", "illustration",
                 "logo", "emblem", "badge", "brand mark", "letters", "text on clothes",
@@ -116,17 +119,32 @@ class LocalImageGenerator:
             exact_reference = "glasses:" in prompt.lower() and (
                 "crocs-style" in prompt.lower() or "clogs" in prompt.lower()
             )
+            complex_reference = "CARRYING:" in prompt or "OUTERWEAR:" in prompt
+            if exact_reference:
+                strength = 0.28
+            elif complex_reference:
+                # A pose template must not overpower explicit coats, canes,
+                # bags or other possessions in a detailed alert.
+                strength = 0.86 if steps >= 30 else 0.83
+            else:
+                strength = 0.78 if steps >= 30 else 0.75
             image = pipe(
                 prompt=prompt,
                 negative_prompt=", ".join(negatives),
                 image=pose_image,
                 # Preserve the clean reference face, glasses, shoes and neutral
                 # proportions while still allowing requested clothing changes.
-                strength=0.28 if exact_reference else (0.74 if steps >= 30 else 0.70),
+                strength=strength,
                 num_inference_steps=steps,
                 guidance_scale=guidance,
                 generator=generator,
             ).images[0]
+            # Local diffusion output benefits from a restrained finishing pass.
+            # It improves facial/garment edges without changing the requested
+            # appearance or introducing the halos caused by aggressive sharpening.
+            image = ImageEnhance.Contrast(image).enhance(1.015)
+            image = ImageEnhance.Sharpness(image).enhance(1.08)
+            image = image.filter(ImageFilter.UnsharpMask(radius=0.7, percent=35, threshold=4))
         output = BytesIO()
         image.save(output, format="PNG", optimize=True)
         return output.getvalue()
