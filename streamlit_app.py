@@ -51,9 +51,12 @@ VISION_MODEL = "@cf/moondream/moondream3.1-9B-A2B"
 
 MAX_ATTEMPTS = 3
 FAST_ATTEMPTS = 1
-FAST_WIDTH = 704
-FAST_HEIGHT = 1056
-DETAILED_WIDTH = 896
+# Match the framing and aspect used by the original production app. RealVisXL
+# is most stable at these native SDXL-friendly dimensions and does not invent
+# brittle facial detail through an oversized fast render.
+FAST_WIDTH = 512
+FAST_HEIGHT = 768
+DETAILED_WIDTH = 768
 DETAILED_HEIGHT = 1152
 GENERATION_LIMIT = 1000000
 GENERATION_WINDOW_SECONDS = 60 * 60
@@ -209,8 +212,7 @@ def cloudflare_multipart_request(model: str, fields: dict, timeout: int = 180) -
     # Identical appearance facts now produce the same stable base image. This
     # prevents an unlucky random seed from turning a previously natural face
     # into a distorted one when the user presses regenerate.
-    seed_material = f"{prompt}|{width}x{height}|{'detailed' if detailed else 'fast'}"
-    stable_seed = int.from_bytes(hashlib.sha256(seed_material.encode("utf-8")).digest()[:4], "big")
+    stable_seed = 42
     image_bytes = generator.generate(
         prompt,
         stable_seed,

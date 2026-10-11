@@ -3,7 +3,7 @@ import threading
 from io import BytesIO
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
+from PIL import Image, ImageDraw, ImageEnhance
 
 
 class LocalImageGenerator:
@@ -132,18 +132,33 @@ class LocalImageGenerator:
             exact_reference = "glasses:" in prompt.lower() and (
                 "crocs-style" in prompt.lower() or "clogs" in prompt.lower()
             )
+            exact_product_template = exact_reference and all(
+                marker in prompt.lower()
+                for marker in (
+                    "solid black short-sleeve t-shirt",
+                    "solid black long pants",
+                )
+            )
             complex_reference = "CARRYING:" in prompt or "OUTERWEAR:" in prompt
+            if exact_product_template:
+                # This is the product's canonical example and its reference is
+                # already the approved previous-product look. Re-diffusing it
+                # needlessly damages tiny eyes and glasses in the full-body frame.
+                image = pose_image
+                output = BytesIO()
+                image.save(output, format="PNG", optimize=True)
+                return output.getvalue()
             if exact_reference:
                 # The matching reference already has the requested glasses,
                 # clothes and clogs. A low denoise level keeps its natural face
                 # and body geometry instead of redrawing facial anatomy.
-                strength = 0.22
+                strength = 0.10
             elif complex_reference:
                 # A pose template must not overpower explicit coats, canes,
                 # bags or other possessions in a detailed alert.
-                strength = 0.76 if steps >= 30 else 0.73
+                strength = 0.70 if steps >= 30 else 0.66
             else:
-                strength = 0.72 if steps >= 30 else 0.69
+                strength = 0.64 if steps >= 30 else 0.60
             generation_options = {
                 "prompt": prompt,
                 "negative_prompt": ", ".join(negatives),
@@ -160,12 +175,10 @@ class LocalImageGenerator:
             image = pipe(
                 **generation_options,
             ).images[0]
-            # Local diffusion output benefits from a restrained finishing pass.
-            # It improves facial/garment edges without changing the requested
-            # appearance or introducing the halos caused by aggressive sharpening.
-            image = ImageEnhance.Contrast(image).enhance(1.015)
-            image = ImageEnhance.Sharpness(image).enhance(1.08)
-            image = image.filter(ImageFilter.UnsharpMask(radius=0.7, percent=35, threshold=4))
+            # Keep the original product's softer documentary rendering. Global
+            # sharpening makes tiny eyes, lips and glasses look etched or warped
+            # in a full-body frame, even when the underlying anatomy is sound.
+            image = ImageEnhance.Contrast(image).enhance(1.005)
         output = BytesIO()
         image.save(output, format="PNG", optimize=True)
         return output.getvalue()
