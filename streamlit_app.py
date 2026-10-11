@@ -3,7 +3,6 @@ import hashlib
 import hmac
 import json
 import os
-import random
 import re
 import threading
 import time
@@ -206,9 +205,15 @@ def cloudflare_multipart_request(model: str, fields: dict, timeout: int = 180) -
     width = int(fields.get("width", FAST_WIDTH))
     height = int(fields.get("height", FAST_HEIGHT))
     detailed = width >= DETAILED_WIDTH
+    prompt = str(fields.get("prompt", ""))
+    # Identical appearance facts now produce the same stable base image. This
+    # prevents an unlucky random seed from turning a previously natural face
+    # into a distorted one when the user presses regenerate.
+    seed_material = f"{prompt}|{width}x{height}|{'detailed' if detailed else 'fast'}"
+    stable_seed = int.from_bytes(hashlib.sha256(seed_material.encode("utf-8")).digest()[:4], "big")
     image_bytes = generator.generate(
-        str(fields.get("prompt", "")),
-        random.SystemRandom().randrange(1, 2**31),
+        prompt,
+        stable_seed,
         width=width,
         height=height,
         steps=32 if detailed else 24,

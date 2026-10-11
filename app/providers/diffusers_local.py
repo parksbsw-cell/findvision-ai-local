@@ -83,6 +83,9 @@ class LocalImageGenerator:
                 "distorted glasses", "soft focus", "low detail skin", "long neck",
                 "plastic skin", "wax face", "over-smoothed face", "uneven eyes",
                 "misaligned pupils", "distorted ears", "fused fingers", "missing fingers",
+                "warped face", "melted face", "uncanny face", "inhuman face",
+                "asymmetric face", "malformed nose", "malformed mouth", "double mouth",
+                "cross-eyed", "lazy eye", "different eye sizes", "facial artifacts",
                 "disfigured hands", "asymmetric shoulders", "tilted body",
                 "dramatic lighting", "cropped body", "missing feet", "extra person",
                 "extra limbs", "extra shoes", "anime", "illustration",
@@ -131,13 +134,16 @@ class LocalImageGenerator:
             )
             complex_reference = "CARRYING:" in prompt or "OUTERWEAR:" in prompt
             if exact_reference:
-                strength = 0.28
+                # The matching reference already has the requested glasses,
+                # clothes and clogs. A low denoise level keeps its natural face
+                # and body geometry instead of redrawing facial anatomy.
+                strength = 0.22
             elif complex_reference:
                 # A pose template must not overpower explicit coats, canes,
                 # bags or other possessions in a detailed alert.
-                strength = 0.86 if steps >= 30 else 0.83
+                strength = 0.76 if steps >= 30 else 0.73
             else:
-                strength = 0.78 if steps >= 30 else 0.75
+                strength = 0.72 if steps >= 30 else 0.69
             generation_options = {
                 "prompt": prompt,
                 "negative_prompt": ", ".join(negatives),

@@ -110,7 +110,10 @@ def image_prompt(a: Appearance, correction: str = "") -> str:
     extras = [translate_terms(value) for value in (a.body_type, a.hair, *a.accessories) if value]
     prompt = (
         "Police lineup record photo, full body, one " + subject
-        + ", straight front view. Straight arms, open hands visible beside thighs. "
+        + ", straight front view. Natural anatomically correct Korean face, "
+        "balanced facial proportions, symmetrical open eyes, aligned pupils, "
+        "natural eyelids, nose, lips, jaw and ears, realistic unretouched skin texture. "
+        "Straight arms, open hands visible beside thighs. "
         "Wearing " + ", ".join(clothing) + ". Feet parallel. "
         + ((", ".join(extras) + ". ") if extras else "")
         + "Ordinary person, no styling. Plain near-white background, even light."
