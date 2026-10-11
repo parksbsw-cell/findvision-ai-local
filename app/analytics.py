@@ -50,9 +50,10 @@ class Analytics:
         for visitor, _ in visit_rows:
             visit_counts[visitor] += 1
         visitors = len(days_by_visitor)
-        # Product metric: count each browser once as a new visit. Its second
-        # session and later sessions belong to returning usage instead.
-        visits = visitors
+        # Every recorded browser session contributes to total visits. Unique
+        # browsers remain the cumulative visitor count, while a browser with
+        # two or more sessions is one returning visitor.
+        visits = len(visit_rows)
         returning = sum(count > 1 for count in visit_counts.values())
         returning_days = sum(max(0, count - 1) for count in visit_counts.values())
         recent = sum(any(day >= today - timedelta(days=6) for day in days) for days in days_by_visitor.values())
