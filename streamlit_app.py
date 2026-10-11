@@ -553,7 +553,10 @@ def build_generation_prompt(
         if value:
             translated = phrase_to_prompt_en(value)
             if key == "outerwear":
-                translated = f"solid {translated}, same single color across torso and both sleeves"
+                translated = (
+                    f"plain solid {translated}; the entire jacket body and both sleeves must use "
+                    "that one stated color only, with no contrasting panels, patch or emblem"
+                )
             clothing_parts.append(f"{label}: {translated}")
     accessories = str(features.get("accessories", "") or "").strip()
     if accessories:

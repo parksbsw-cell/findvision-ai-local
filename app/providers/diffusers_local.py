@@ -83,6 +83,9 @@ class LocalImageGenerator:
                 "dramatic lighting", "cropped body", "missing feet", "extra person",
                 "extra limbs", "extra shoes", "anime", "illustration",
                 "logo", "emblem", "badge", "brand mark", "letters", "text on clothes",
+                "watermark", "signature", "caption", "garbled text", "national flag",
+                "sports uniform", "team jacket", "varsity jacket", "tracksuit",
+                "chest patch", "sleeve patch", "contrasting sleeves", "contrast panels",
                 "decorative patch", "school badge", "club badge", "two-tone outerwear",
                 "multicolor jacket", "color-block jacket", "striped sleeves",
             ]
@@ -101,7 +104,10 @@ class LocalImageGenerator:
                 re.IGNORECASE,
             )
             if outerwear_match:
-                negatives.extend(outerwear_color_negatives[outerwear_match.group(1).lower()])
+                wrong_colors = outerwear_color_negatives[outerwear_match.group(1).lower()]
+                # Repeating the most damaging contradictions gives them more
+                # influence without altering the positive appearance facts.
+                negatives.extend(wrong_colors + wrong_colors)
             if "solid black short sleeve" in prompt:
                 negatives.extend(["white shirt", "gray shirt", "colored shirt"])
             if "short sleeve" in prompt and "outer" not in prompt:

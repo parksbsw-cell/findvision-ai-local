@@ -22,5 +22,6 @@ def test_clothing_and_possessions_precede_secondary_appearance():
     assert description.index("accessories: in the right hand brown walking cane") < description.index("hair color:")
 
     prompt = build_generation_prompt(features, "")
-    assert "MANDATORY CLOTHING AND ITEMS: OUTERWEAR: solid red puffer jacket" in prompt
+    assert "MANDATORY CLOTHING AND ITEMS: OUTERWEAR: plain solid red puffer jacket" in prompt
+    assert "no contrasting panels, patch or emblem" in prompt
     assert "no logo, emblem, badge, letters, numbers or decorative mark" in prompt
