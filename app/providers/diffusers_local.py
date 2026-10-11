@@ -42,7 +42,11 @@ class LocalImageGenerator:
                 pipeline.enable_model_cpu_offload()
             pipeline.scheduler = DPMSolverMultistepScheduler.from_config(
                 pipeline.scheduler.config,
-                algorithm_type="dpmsolver++",
+                # RealVisXL is tuned for DPM++ SDE Karras. It produces more
+                # natural skin and fewer hard facial edges than plain DPM++.
+                algorithm_type=(
+                    "sde-dpmsolver++" if "xl" in self.model_id.lower() else "dpmsolver++"
+                ),
                 use_karras_sigmas=True,
             )
             self._pipeline = pipeline
@@ -134,16 +138,21 @@ class LocalImageGenerator:
                 strength = 0.86 if steps >= 30 else 0.83
             else:
                 strength = 0.78 if steps >= 30 else 0.75
+            generation_options = {
+                "prompt": prompt,
+                "negative_prompt": ", ".join(negatives),
+                "image": pose_image,
+                "strength": strength,
+                "num_inference_steps": steps,
+                "guidance_scale": guidance,
+                "generator": generator,
+            }
+            if "xl" in self.model_id.lower():
+                # Prevent high CFG values from washing out skin and fabric
+                # while retaining the explicit appearance instructions.
+                generation_options["guidance_rescale"] = 0.55
             image = pipe(
-                prompt=prompt,
-                negative_prompt=", ".join(negatives),
-                image=pose_image,
-                # Preserve the clean reference face, glasses, shoes and neutral
-                # proportions while still allowing requested clothing changes.
-                strength=strength,
-                num_inference_steps=steps,
-                guidance_scale=guidance,
-                generator=generator,
+                **generation_options,
             ).images[0]
             # Local diffusion output benefits from a restrained finishing pass.
             # It improves facial/garment edges without changing the requested
